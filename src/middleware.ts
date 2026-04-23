@@ -5,9 +5,16 @@ import { routing } from "./i18n/routing";
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-const PUBLIC_PATHS = ["/en/login", "/zh-TW/login", "/login"];
+const PUBLIC_PATHS = ["/en/login", "/zh-TW/login", "/login", "/auth/"];
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // Auth callback routes must bypass i18n routing entirely
+  if (pathname.startsWith("/auth/")) {
+    return NextResponse.next();
+  }
+
   // Handle i18n routing first
   const intlResponse = intlMiddleware(request);
 

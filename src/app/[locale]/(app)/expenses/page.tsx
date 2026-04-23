@@ -66,20 +66,33 @@ export default async function ExpensesPage({
             </tr>
           </thead>
           <tbody className="divide-y">
+            {expenses.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                  No expenses yet.
+                </td>
+              </tr>
+            )}
             {expenses.map((e) => (
               <tr key={e.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3">{e.expense_date}</td>
-                <td className="px-4 py-3">{e.description}</td>
+                <td className="px-4 py-3">
+                  <Link href={`/${locale}/expenses/${e.id}`} className="block">
+                    {e.expense_date}
+                  </Link>
+                </td>
+                <td className="px-4 py-3">
+                  <Link href={`/${locale}/expenses/${e.id}`} className="block font-medium hover:text-blue-600">
+                    {e.description}
+                  </Link>
+                </td>
                 <td className="px-4 py-3">{e.campuses?.name ?? "—"}</td>
-                <td className="px-4 py-3">{e.category}</td>
+                <td className="px-4 py-3 capitalize">{e.category}</td>
                 <td className="px-4 py-3 text-right font-mono">
                   NT${e.amount.toLocaleString()}
                 </td>
                 <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[e.status] ?? ""}`}
-                  >
-                    {e.status}
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[e.status] ?? ""}`}>
+                    {t(`statuses.${e.status}`)}
                   </span>
                 </td>
               </tr>
