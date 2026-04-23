@@ -1,0 +1,149 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "donations": "Donations",
+    "expenses": "Expenses",
+    "donors": "Donors",
+    "reports": "Reports",
+    "admin": "Admin",
+    "signOut": "Sign Out"
+  },
+  "login": {
+    "title": "TIF Finance",
+    "subtitle": "Taichung International Fellowship",
+    "signInWithGoogle": "Sign in with Google",
+    "signingIn": "Signing in…",
+    "error": "Sign-in failed. Please try again."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "ytdDonations": "YTD Donations",
+    "ytdExpenses": "YTD Expenses",
+    "pendingApprovals": "Pending Approvals",
+    "recentDonations": "Recent Donations",
+    "recentExpenses": "Recent Expenses"
+  },
+  "donations": {
+    "title": "Donations",
+    "newDonation": "New Donation",
+    "giftDate": "Gift Date",
+    "donor": "Donor",
+    "amount": "Amount (TWD)",
+    "campus": "Campus",
+    "fund": "Fund",
+    "paymentMethod": "Payment Method",
+    "depositReference": "Deposit Reference",
+    "notes": "Notes",
+    "receipt": "Receipt",
+    "save": "Save Donation",
+    "cancel": "Cancel",
+    "paymentMethods": {
+      "cash": "Cash",
+      "card": "Card",
+      "bank_transfer": "Bank Transfer",
+      "check": "Check",
+      "other": "Other"
+    },
+    "anonymous": "Anonymous",
+    "searchDonor": "Search donor…",
+    "newDonor": "Add New Donor"
+  },
+  "expenses": {
+    "title": "Expenses",
+    "newExpense": "New Expense",
+    "description": "Description",
+    "category": "Category",
+    "expenseDate": "Expense Date",
+    "amount": "Amount (TWD)",
+    "campus": "Campus",
+    "fund": "Fund",
+    "paymentMethod": "Payment Method",
+    "receipt": "Receipt",
+    "notes": "Notes",
+    "status": "Status",
+    "submit": "Submit for Approval",
+    "saveDraft": "Save as Draft",
+    "approve": "Approve",
+    "reject": "Reject",
+    "markPaid": "Mark as Paid",
+    "approvalNotes": "Approval Notes",
+    "statuses": {
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "paid": "Paid"
+    },
+    "categories": {
+      "ministry": "Ministry",
+      "facilities": "Facilities",
+      "staffing": "Staffing",
+      "missions": "Missions",
+      "vbs": "VBS",
+      "worship": "Worship",
+      "admin": "Administration",
+      "other": "Other"
+    }
+  },
+  "donors": {
+    "title": "Donors",
+    "newDonor": "New Donor",
+    "displayName": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "campus": "Preferred Campus",
+    "ytdAmount": "YTD Giving",
+    "lastGiftDate": "Last Gift",
+    "giftCount": "Gifts",
+    "searchPlaceholder": "Search by name or email…",
+    "save": "Save Donor",
+    "cancel": "Cancel",
+    "viewHistory": "View History"
+  },
+  "reports": {
+    "title": "Reports",
+    "monthlySummary": "Monthly Summary",
+    "budgetVariance": "Budget vs Actual",
+    "donorReport": "Donor Report",
+    "year": "Year",
+    "month": "Month",
+    "campus": "Campus",
+    "fund": "Fund",
+    "totalDonations": "Total Donations",
+    "totalExpenses": "Total Expenses",
+    "budgeted": "Budgeted",
+    "actual": "Actual",
+    "variance": "Variance",
+    "export": "Export CSV"
+  },
+  "admin": {
+    "title": "Administration",
+    "users": "Users",
+    "budgets": "Budgets",
+    "funds": "Funds",
+    "campuses": "Campuses",
+    "bankImport": "Bank Import",
+    "role": "Role",
+    "roles": {
+      "admin": "Admin",
+      "campus-finance": "Campus Finance",
+      "viewer": "Viewer"
+    },
+    "assignedCampus": "Assigned Campus",
+    "uploadCSV": "Upload Bank CSV",
+    "matchTransactions": "Match Transactions"
+  },
+  "common": {
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "actions": "Actions",
+    "confirmDelete": "Are you sure? This cannot be undone.",
+    "currency": "NT$",
+    "noData": "No data to display.",
+    "all": "All",
+    "search": "Search"
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "nav": {
+    "dashboard": "儀表板",
+    "donations": "奉獻記錄",
+    "expenses": "支出申請",
+    "donors": "奉獻者",
+    "reports": "報表",
+    "admin": "管理",
+    "signOut": "登出"
+  },
+  "login": {
+    "title": "TIF 財務系統",
+    "subtitle": "台中國際教會",
+    "signInWithGoogle": "以 Google 帳號登入",
+    "signingIn": "登入中…",
+    "error": "登入失敗，請再試一次。"
+  },
+  "dashboard": {
+    "title": "儀表板",
+    "ytdDonations": "本年度奉獻",
+    "ytdExpenses": "本年度支出",
+    "pendingApprovals": "待審核",
+    "recentDonations": "最近奉獻",
+    "recentExpenses": "最近支出"
+  },
+  "donations": {
+    "title": "奉獻記錄",
+    "newDonation": "新增奉獻",
+    "giftDate": "奉獻日期",
+    "donor": "奉獻者",
+    "amount": "金額（台幣）",
+    "campus": "堂區",
+    "fund": "用途",
+    "paymentMethod": "付款方式",
+    "depositReference": "存款參考號碼",
+    "notes": "備註",
+    "receipt": "收據",
+    "save": "儲存奉獻",
+    "cancel": "取消",
+    "paymentMethods": {
+      "cash": "現金",
+      "card": "刷卡",
+      "bank_transfer": "銀行轉帳",
+      "check": "支票",
+      "other": "其他"
+    },
+    "anonymous": "匿名",
+    "searchDonor": "搜尋奉獻者…",
+    "newDonor": "新增奉獻者"
+  },
+  "expenses": {
+    "title": "支出申請",
+    "newExpense": "新增支出",
+    "description": "說明",
+    "category": "類別",
+    "expenseDate": "支出日期",
+    "amount": "金額（台幣）",
+    "campus": "堂區",
+    "fund": "用途",
+    "paymentMethod": "付款方式",
+    "receipt": "收據",
+    "notes": "備註",
+    "status": "狀態",
+    "submit": "提交審核",
+    "saveDraft": "儲存草稿",
+    "approve": "核准",
+    "reject": "拒絕",
+    "markPaid": "標記為已付款",
+    "approvalNotes": "審核備註",
+    "statuses": {
+      "draft": "草稿",
+      "submitted": "已提交",
+      "approved": "已核准",
+      "rejected": "已拒絕",
+      "paid": "已付款"
+    },
+    "categories": {
+      "ministry": "事工",
+      "facilities": "場地設施",
+      "staffing": "人事",
+      "missions": "宣教",
+      "vbs": "兒童聖經學校",
+      "worship": "敬拜",
+      "admin": "行政",
+      "other": "其他"
+    }
+  },
+  "donors": {
+    "title": "奉獻者",
+    "newDonor": "新增奉獻者",
+    "displayName": "姓名",
+    "email": "電子郵件",
+    "phone": "電話",
+    "campus": "所屬堂區",
+    "ytdAmount": "本年度奉獻",
+    "lastGiftDate": "最近奉獻日期",
+    "giftCount": "奉獻次數",
+    "searchPlaceholder": "以姓名或電子郵件搜尋…",
+    "save": "儲存",
+    "cancel": "取消",
+    "viewHistory": "查看奉獻記錄"
+  },
+  "reports": {
+    "title": "報表",
+    "monthlySummary": "月份摘要",
+    "budgetVariance": "預算 vs 實際",
+    "donorReport": "奉獻者報表",
+    "year": "年份",
+    "month": "月份",
+    "campus": "堂區",
+    "fund": "用途",
+    "totalDonations": "奉獻總額",
+    "totalExpenses": "支出總額",
+    "budgeted": "預算",
+    "actual": "實際",
+    "variance": "差異",
+    "export": "匯出 CSV"
+  },
+  "admin": {
+    "title": "系統管理",
+    "users": "使用者",
+    "budgets": "預算",
+    "funds": "用途設定",
+    "campuses": "堂區設定",
+    "bankImport": "銀行對帳",
+    "role": "角色",
+    "roles": {
+      "admin": "管理員",
+      "campus-finance": "堂區財務",
+      "viewer": "查看者"
+    },
+    "assignedCampus": "負責堂區",
+    "uploadCSV": "上傳銀行 CSV",
+    "matchTransactions": "對帳交易"
+  },
+  "common": {
+    "loading": "載入中…",
+    "save": "儲存",
+    "cancel": "取消",
+    "delete": "刪除",
+    "edit": "編輯",
+    "actions": "操作",
+    "confirmDelete": "確定刪除嗎？此操作無法復原。",
+    "currency": "NT$",
+    "noData": "沒有資料。",
+    "all": "全部",
+    "search": "搜尋"
+  }
+}
