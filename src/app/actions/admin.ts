@@ -25,7 +25,8 @@ export async function updateUserRole(userId: string, role: Role) {
   const VALID: Role[] = ["admin", "campus-finance", "viewer"];
   if (!VALID.includes(role)) return { error: "Invalid role" };
 
-  const { error: dbErr } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: dbErr } = await (supabase as any)
     .from("user_profiles")
     .update({ role })
     .eq("id", userId);
@@ -40,7 +41,8 @@ export async function updateUserCampus(userId: string, campusId: string | null) 
   const { error, supabase } = await requireAdmin();
   if (error || !supabase) return { error };
 
-  const { error: dbErr } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: dbErr } = await (supabase as any)
     .from("user_profiles")
     .update({ assigned_campus_id: campusId || null })
     .eq("id", userId);

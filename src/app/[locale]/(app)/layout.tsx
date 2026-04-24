@@ -2,6 +2,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Nav } from "@/components/nav";
 
+// All pages under this layout are auth-gated; never statically render
+export const dynamic = "force-dynamic";
+
+type ProfileShape = { role: string; assigned_campus_id: string | null } | null;
+
 export default async function AppLayout({
   children,
   params,
@@ -16,21 +21,26 @@ export default async function AppLayout({
   if (!user) redirect(`/${locale}/login`);
 
   // Load profile — auto-create on first login if missing
-  let { data: profileData } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: rawProfile } = await (supabase as any)
     .from("user_profiles")
     .select("role, assigned_campus_id")
     .eq("id", user.id)
     .single();
 
-  if (!profileData) {
+  let profile: ProfileShape = rawProfile as ProfileShape;
+
+  if (!profile) {
     // First login: check if admin pre-seeded a profile by this email
     const email = user.email?.toLowerCase() ?? "";
-    const { data: seeded } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: seededRaw } = await (supabase as any)
       .from("user_profiles")
       .select("id, role, assigned_campus_id")
       .eq("email", email)
       .neq("id", user.id)   // placeholder UUID, not yet claimed
       .maybeSingle();
+    const seeded = seededRaw as { id: string; role: string; assigned_campus_id: string | null } | null;
 
     if (seeded) {
       // Claim the pre-seeded profile: update its ID to the real auth UUID
@@ -39,7 +49,7 @@ export default async function AppLayout({
         .from("user_profiles")
         .update({ id: user.id })
         .eq("id", seeded.id);
-      profileData = { role: seeded.role, assigned_campus_id: seeded.assigned_campus_id };
+      profile = { role: seeded.role, assigned_campus_id: seeded.assigned_campus_id };
     } else {
       // No pre-seed: create a viewer profile automatically
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,11 +59,10 @@ export default async function AppLayout({
         full_name: user.user_metadata?.full_name ?? user.email,
         role:      "viewer",
       });
-      profileData = { role: "viewer", assigned_campus_id: null };
+      profile = { role: "viewer", assigned_campus_id: null };
     }
   }
 
-  const profile = profileData as { role: string; assigned_campus_id: string | null } | null;
   const role = profile?.role ?? "viewer";
 
   return (
