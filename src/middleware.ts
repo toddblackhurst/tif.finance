@@ -8,6 +8,7 @@ const intlMiddleware = createIntlMiddleware(routing);
 const PUBLIC_PATHS = [
   "/en/login", "/zh-TW/login", "/login", "/auth/",
   "/en/public", "/zh-TW/public",
+  "/api/debug-public",
 ];
 
 export async function middleware(request: NextRequest) {
