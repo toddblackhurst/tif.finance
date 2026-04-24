@@ -6,7 +6,8 @@
     "donors": "奉獻者",
     "reports": "報表",
     "admin": "管理",
-    "signOut": "登出"
+    "signOut": "登出",
+    "bank": "銀行對帳"
   },
   "login": {
     "title": "TIF 財務系統",

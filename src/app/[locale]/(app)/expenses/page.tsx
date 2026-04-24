@@ -46,11 +46,19 @@ export default async function ExpensesPage({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <Button asChild>
-          <Link href={`/${locale}/expenses/new`}>{t("newExpense")}</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/export/expenses?year=${new Date().getFullYear()}`}
+            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            ↓ Export CSV
+          </a>
+          <Button asChild>
+            <Link href={`/${locale}/expenses/new`}>{t("newExpense")}</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-lg border bg-white overflow-hidden">

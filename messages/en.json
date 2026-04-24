@@ -6,7 +6,8 @@
     "donors": "Donors",
     "reports": "Reports",
     "admin": "Admin",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "bank": "Bank Reconciliation"
   },
   "login": {
     "title": "TIF Finance",

@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
-  { href: "/", key: "dashboard" },
-  { href: "/donations", key: "donations" },
-  { href: "/expenses", key: "expenses" },
-  { href: "/donors", key: "donors" },
-  { href: "/reports", key: "reports" },
-  { href: "/admin", key: "admin" },
+  { href: "/",         key: "dashboard",  adminOnly: false },
+  { href: "/donations",key: "donations",  adminOnly: false },
+  { href: "/expenses", key: "expenses",   adminOnly: false },
+  { href: "/donors",   key: "donors",     adminOnly: false },
+  { href: "/reports",  key: "reports",    adminOnly: false },
+  { href: "/bank",     key: "bank",       adminOnly: true  },
+  { href: "/admin",    key: "admin",      adminOnly: true  },
 ] as const;
 
 export function Nav({ locale, role }: { locale: string; role: string }) {
@@ -26,7 +27,9 @@ export function Nav({ locale, role }: { locale: string; role: string }) {
     window.location.href = `/${locale}/login`;
   }
 
-  const adminLinks = role === "admin" ? NAV_LINKS : NAV_LINKS.filter((l) => l.key !== "admin");
+  const adminLinks = role === "admin"
+    ? NAV_LINKS
+    : NAV_LINKS.filter((l) => !l.adminOnly);
 
   return (
     <nav className="flex flex-col h-full bg-white border-r">

@@ -34,3 +34,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python
+__pycache__/
+*.pyc
+
+# Migration CSVs (contain donor/financial data — never commit)
+scripts/migrate/csv/
