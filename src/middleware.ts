@@ -5,7 +5,10 @@ import { routing } from "./i18n/routing";
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-const PUBLIC_PATHS = ["/en/login", "/zh-TW/login", "/login", "/auth/"];
+const PUBLIC_PATHS = [
+  "/en/login", "/zh-TW/login", "/login", "/auth/",
+  "/en/public", "/zh-TW/public",
+];
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
