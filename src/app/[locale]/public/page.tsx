@@ -199,7 +199,7 @@ export default async function PublicDashboardPage({
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 text-sm">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="bg-blue-700 text-white px-5 py-4">
+      <div className="text-white px-5 py-4" style={{backgroundColor:"#1b2327"}}>
         <div className="max-w-5xl mx-auto">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -209,13 +209,13 @@ export default async function PublicDashboardPage({
                 </span>
               </div>
               <h1 className="text-lg font-bold">{t("orgName")}</h1>
-              <p className="text-blue-200 text-sm">{t("title")}</p>
+              <p className="text-white/60 text-sm">{t("title")}</p>
             </div>
             <div className="flex items-center gap-2">
               {/* Language toggle */}
               <Link
                 href={`/${otherLocale}/public${sp.year ? `?year=${sp.year}` : ""}`}
-                className="px-3 py-1.5 rounded-md text-sm font-semibold bg-white text-blue-700 hover:bg-blue-50 transition-colors"
+                className="px-3 py-1.5 rounded-md text-sm font-semibold bg-white hover:bg-white/90 transition-colors" style={{color:"#1b2327"}}
               >
                 {t("langToggle")}
               </Link>
@@ -226,8 +226,8 @@ export default async function PublicDashboardPage({
                   href={`?year=${y}`}
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     y === currentYear
-                      ? "bg-blue-500 text-white"
-                      : "bg-blue-600 text-white hover:bg-blue-500"
+                      ? "text-white"
+                      : "text-white/70 hover:text-white"
                   }`}
                 >
                   {y}
@@ -238,7 +238,7 @@ export default async function PublicDashboardPage({
 
           {/* Sub-header stats */}
           {hasData && (
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-blue-200 text-xs">
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-white/50 text-xs">
               <span>{t("dataUpdatedTo")} {new Date().toISOString().slice(0, 10)}</span>
               <span>·</span>
               <span>{campusCount} {t("campuses")}</span>
@@ -289,8 +289,7 @@ export default async function PublicDashboardPage({
                   <div className="mt-1.5">
                     <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                       <div
-                        className="h-1.5 rounded-full bg-blue-500"
-                        style={{ width: `${Math.min(pctYearElapsed, 100)}%` }}
+                        style={{ backgroundColor:"#27b7d8", width: `${Math.min(pctYearElapsed, 100)}%` }}
                       />
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">
