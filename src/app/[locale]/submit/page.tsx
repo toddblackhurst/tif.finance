@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-
-const CAMPUSES = ["TIF North", "TIF South", "All Praise", "Hope Fellowship"];
 const CATEGORIES = ["ministry", "facilities", "staffing", "missions", "vbs", "worship", "admin", "other"] as const;
 
 type LocaleLabels = {
@@ -108,6 +106,7 @@ export default function SubmitExpensePage() {
   const otherLang = lang === "en" ? "zh-TW" : "en";
   const otherLabel = lang === "en" ? "中文" : "English";
 
+  const [campuses, setCampuses] = useState<string[]>([]);
   const [form, setForm] = useState({
     name: "", email: "", campus_name: "", category: "",
     description: "", amount: "", expense_date: "", notes: "",
@@ -115,6 +114,10 @@ export default function SubmitExpensePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [serverError, setServerError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/campuses").then(r => r.json()).then(setCampuses).catch(() => {});
+  }, []);
 
   function set(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }));
@@ -238,7 +241,7 @@ export default function SubmitExpensePage() {
                 className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${errors.campus_name ? "border-red-400" : "border-gray-300"}`}
               >
                 <option value="">{t.selectCampus}</option>
-                {CAMPUSES.map(c => <option key={c} value={c}>{c}</option>)}
+                {campuses.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               {errors.campus_name && <p className="text-xs text-red-500 mt-1">{errors.campus_name}</p>}
             </div>
