@@ -7,6 +7,7 @@ import {
   sendExpenseSubmittedEmail,
   sendExpenseApprovedEmail,
   sendExpenseRejectedEmail,
+  sendExpenseNeedsPaymentEmail,
 } from "@/lib/email";
 
 export interface ExpenseFormState {
@@ -21,11 +22,41 @@ const EXPENSE_CATEGORIES = [
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-async function getApproverEmails(supabase: Awaited<ReturnType<typeof createClient>>) {
+// Returns emails of campus-finance users assigned to the given campus + all admins.
+async function getApproverEmailsForCampus(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  campusId: string
+): Promise<string[]> {
+  const emailSet = new Set<string>();
+
+  const { data: admins } = await supabase
+    .from("user_profiles")
+    .select("email")
+    .eq("role", "admin")
+    .not("email", "is", null) as { data: { email: string }[] | null };
+  for (const a of admins ?? []) if (a.email) emailSet.add(a.email);
+
+  const { data: assignments } = await supabase
+    .from("user_campus_assignments")
+    .select("user_id, user_profiles!user_campus_assignments_user_id_fkey(email)")
+    .eq("campus_id", campusId) as unknown as {
+      data: { user_profiles: { email: string | null } | null }[] | null
+    };
+  for (const row of assignments ?? []) {
+    const email = row.user_profiles?.email;
+    if (email) emailSet.add(email);
+  }
+
+  return Array.from(emailSet);
+}
+
+async function getTreasurerEmails(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<string[]> {
   const { data } = await supabase
     .from("user_profiles")
     .select("email")
-    .in("role", ["admin", "campus-finance"])
+    .eq("role", "admin")
     .not("email", "is", null);
   return ((data ?? []) as { email: string }[]).map((u) => u.email).filter(Boolean);
 }
@@ -37,10 +68,10 @@ async function getExpenseWithPeople(
   const { data } = await supabase
     .from("expenses")
     .select(`
-      id, description, amount,
+      id, description, amount, campus_id, submitter_name, submitter_email,
       campuses ( name ),
-      submitter:user_profiles!submitter_id ( full_name, email ),
-      approver:user_profiles!approver_id ( full_name, email )
+      submitter:user_profiles!expenses_submitter_id_fkey ( full_name, email ),
+      approver:user_profiles!expenses_approver_id_fkey ( full_name, email )
     `)
     .eq("id", expenseId)
     .single();
@@ -48,10 +79,25 @@ async function getExpenseWithPeople(
     id: string;
     description: string;
     amount: number;
+    campus_id: string;
+    submitter_name: string | null;
+    submitter_email: string | null;
     campuses: { name: string } | null;
     submitter: { full_name: string | null; email: string | null } | null;
     approver: { full_name: string | null; email: string | null } | null;
   } | null;
+}
+
+function resolveSubmitter(expData: Awaited<ReturnType<typeof getExpenseWithPeople>>) {
+  if (!expData) return { name: "Unknown", email: null };
+  const name =
+    expData.submitter?.full_name ??
+    expData.submitter_name ??
+    expData.submitter?.email ??
+    expData.submitter_email ??
+    "A church member";
+  const email = expData.submitter?.email ?? expData.submitter_email ?? null;
+  return { name, email };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,7 +108,6 @@ export async function createExpense(
   formData: FormData
 ): Promise<ExpenseFormState> {
   const supabase = await createClient();
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
@@ -77,9 +122,7 @@ export async function createExpense(
   if (!description || !category || !expenseDate || !amount || !campusId || !fundId) {
     return { error: "Please fill in all required fields." };
   }
-  if (amount <= 0) {
-    return { error: "Amount must be greater than zero." };
-  }
+  if (amount <= 0) return { error: "Amount must be greater than zero." };
   if (!EXPENSE_CATEGORIES.includes(category as typeof EXPENSE_CATEGORIES[number])) {
     return { error: "Invalid category." };
   }
@@ -92,14 +135,10 @@ export async function createExpense(
     .from("expenses")
     .insert({
       submitter_id: user.id,
-      description,
-      category,
+      description, category,
       expense_date: expenseDate,
-      amount,
-      campus_id: campusId,
-      fund_id: fundId,
-      notes,
-      status,
+      amount, campus_id: campusId, fund_id: fundId,
+      notes, status,
     })
     .select("id")
     .single() as { data: { id: string } | null; error: { message: string } | null };
@@ -109,37 +148,28 @@ export async function createExpense(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("audit_log").insert({
-    entity_type: "expense",
-    entity_id: expense.id,
-    action: "create",
-    actor_id: user.id,
+    entity_type: "expense", entity_id: expense.id,
+    action: "create", actor_id: user.id,
     after_snapshot: { description, amount, campus_id: campusId, fund_id: fundId, status },
     change_summary: `Expense of NT$${amount.toLocaleString()} ${status === "submitted" ? "submitted" : "saved as draft"}`,
   });
 
-  // Notify approvers when directly submitted
   if (status === "submitted") {
     try {
       const [approverEmails, expData] = await Promise.all([
-        getApproverEmails(supabase),
+        getApproverEmailsForCampus(supabase, campusId),
         getExpenseWithPeople(supabase, expense.id),
       ]);
       const profile = await supabase.from("user_profiles").select("full_name").eq("id", user.id).single();
       const submitterName = (profile.data as { full_name: string | null } | null)?.full_name ?? "A staff member";
       if (approverEmails.length && expData) {
         await sendExpenseSubmittedEmail({
-          approverEmails,
-          submitterName,
-          description,
-          amount,
+          approverEmails, submitterName, description, amount,
           campus: expData.campuses?.name ?? "",
-          expenseId: expense.id,
-          locale,
+          expenseId: expense.id, locale,
         });
       }
-    } catch (emailErr) {
-      console.error("Email send failed (non-blocking):", emailErr);
-    }
+    } catch (e) { console.error("Email failed:", e); }
   }
 
   revalidatePath(`/${locale}/expenses`);
@@ -151,7 +181,6 @@ export async function submitDraftExpense(
   expenseId: string
 ): Promise<ExpenseFormState> {
   const supabase = await createClient();
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
@@ -167,36 +196,27 @@ export async function submitDraftExpense(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("audit_log").insert({
-    entity_type: "expense",
-    entity_id: expenseId,
-    action: "update",
-    actor_id: user.id,
+    entity_type: "expense", entity_id: expenseId,
+    action: "update", actor_id: user.id,
     after_snapshot: { status: "submitted" },
     change_summary: "Draft expense submitted for approval",
   });
 
-  // Notify approvers
   try {
-    const [approverEmails, expData] = await Promise.all([
-      getApproverEmails(supabase),
-      getExpenseWithPeople(supabase, expenseId),
-    ]);
-    const profile = await supabase.from("user_profiles").select("full_name").eq("id", user.id).single();
-    const submitterName = (profile.data as { full_name: string | null } | null)?.full_name ?? "A staff member";
-    if (approverEmails.length && expData) {
-      await sendExpenseSubmittedEmail({
-        approverEmails,
-        submitterName,
-        description: expData.description,
-        amount: expData.amount,
-        campus: expData.campuses?.name ?? "",
-        expenseId,
-        locale,
-      });
+    const expData = await getExpenseWithPeople(supabase, expenseId);
+    if (expData) {
+      const approverEmails = await getApproverEmailsForCampus(supabase, expData.campus_id);
+      const { name: submitterName } = resolveSubmitter(expData);
+      if (approverEmails.length) {
+        await sendExpenseSubmittedEmail({
+          approverEmails, submitterName,
+          description: expData.description, amount: expData.amount,
+          campus: expData.campuses?.name ?? "",
+          expenseId, locale,
+        });
+      }
     }
-  } catch (emailErr) {
-    console.error("Email send failed (non-blocking):", emailErr);
-  }
+  } catch (e) { console.error("Email failed:", e); }
 
   revalidatePath(`/${locale}/expenses`);
   revalidatePath(`/${locale}/expenses/${expenseId}`);
@@ -209,17 +229,14 @@ export async function approveExpense(
   approvalNotes: string | null
 ): Promise<ExpenseFormState> {
   const supabase = await createClient();
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
   const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+    .from("user_profiles").select("role, full_name").eq("id", user.id).single();
+  const role = (profile as { role: string; full_name: string | null } | null)?.role;
+  const approverName = (profile as { role: string; full_name: string | null } | null)?.full_name ?? "An approver";
 
-  const role = (profile as { role: string } | null)?.role;
   if (role !== "admin" && role !== "campus-finance") {
     return { error: "Not authorized to approve expenses." };
   }
@@ -240,33 +257,41 @@ export async function approveExpense(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("audit_log").insert({
-    entity_type: "expense",
-    entity_id: expenseId,
-    action: "update",
-    actor_id: user.id,
+    entity_type: "expense", entity_id: expenseId,
+    action: "update", actor_id: user.id,
     after_snapshot: { status: "approved" },
     change_summary: "Expense approved",
   });
 
-  // Notify submitter
   try {
-    const expData = await getExpenseWithPeople(supabase, expenseId);
-    if (expData?.submitter?.email) {
-      await sendExpenseApprovedEmail({
-        submitterEmail: expData.submitter.email,
-        submitterName: expData.submitter.full_name ?? "Staff",
-        description: expData.description,
-        amount: expData.amount,
-        approverName: expData.approver?.full_name ?? "An approver",
-        expenseId,
-        locale,
-      });
+    const [expData, treasurerEmails] = await Promise.all([
+      getExpenseWithPeople(supabase, expenseId),
+      getTreasurerEmails(supabase),
+    ]);
+    if (expData) {
+      const { name: submitterName, email: submitterEmail } = resolveSubmitter(expData);
+
+      if (submitterEmail) {
+        await sendExpenseApprovedEmail({
+          submitterEmail, submitterName,
+          description: expData.description, amount: expData.amount,
+          approverName, expenseId, locale,
+        });
+      }
+
+      if (treasurerEmails.length) {
+        await sendExpenseNeedsPaymentEmail({
+          treasurerEmails, submitterName,
+          description: expData.description, amount: expData.amount,
+          campus: expData.campuses?.name ?? "",
+          approverName, expenseId, locale,
+        });
+      }
     }
-  } catch (emailErr) {
-    console.error("Email send failed (non-blocking):", emailErr);
-  }
+  } catch (e) { console.error("Email failed:", e); }
 
   revalidatePath(`/${locale}/expenses`);
+  revalidatePath(`/${locale}/expenses/${expenseId}`);
   return { success: true };
 }
 
@@ -276,17 +301,14 @@ export async function rejectExpense(
   approvalNotes: string | null
 ): Promise<ExpenseFormState> {
   const supabase = await createClient();
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
   const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+    .from("user_profiles").select("role, full_name").eq("id", user.id).single();
+  const role = (profile as { role: string; full_name: string | null } | null)?.role;
+  const approverName = (profile as { role: string; full_name: string | null } | null)?.full_name ?? "An approver";
 
-  const role = (profile as { role: string } | null)?.role;
   if (role !== "admin" && role !== "campus-finance") {
     return { error: "Not authorized to reject expenses." };
   }
@@ -307,57 +329,45 @@ export async function rejectExpense(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("audit_log").insert({
-    entity_type: "expense",
-    entity_id: expenseId,
-    action: "update",
-    actor_id: user.id,
+    entity_type: "expense", entity_id: expenseId,
+    action: "update", actor_id: user.id,
     after_snapshot: { status: "rejected" },
     change_summary: "Expense rejected",
   });
 
-  // Notify submitter
   try {
     const expData = await getExpenseWithPeople(supabase, expenseId);
-    if (expData?.submitter?.email) {
-      await sendExpenseRejectedEmail({
-        submitterEmail: expData.submitter.email,
-        submitterName: expData.submitter.full_name ?? "Staff",
-        description: expData.description,
-        amount: expData.amount,
-        approverName: expData.approver?.full_name ?? "An approver",
-        rejectionNote: approvalNotes,
-        expenseId,
-        locale,
-      });
+    if (expData) {
+      const { name: submitterName, email: submitterEmail } = resolveSubmitter(expData);
+      if (submitterEmail) {
+        await sendExpenseRejectedEmail({
+          submitterEmail, submitterName,
+          description: expData.description, amount: expData.amount,
+          approverName, rejectionNote: approvalNotes,
+          expenseId, locale,
+        });
+      }
     }
-  } catch (emailErr) {
-    console.error("Email send failed (non-blocking):", emailErr);
-  }
+  } catch (e) { console.error("Email failed:", e); }
 
   revalidatePath(`/${locale}/expenses`);
+  revalidatePath(`/${locale}/expenses/${expenseId}`);
   return { success: true };
 }
 
 export async function markExpensePaid(
   locale: string,
   expenseId: string,
-  checkNumber: string | null
+  paymentReference: string | null
 ): Promise<ExpenseFormState> {
   const supabase = await createClient();
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
   const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
+    .from("user_profiles").select("role").eq("id", user.id).single();
   const role = (profile as { role: string } | null)?.role;
-  if (role !== "admin") {
-    return { error: "Only admins can mark expenses as paid." };
-  }
+  if (role !== "admin") return { error: "Only admins can mark expenses as paid." };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
@@ -366,7 +376,7 @@ export async function markExpensePaid(
       status: "paid",
       paid_at: new Date().toISOString(),
       paid_by_id: user.id,
-      check_number: checkNumber,
+      payment_reference: paymentReference,
     })
     .eq("id", expenseId)
     .eq("status", "approved") as { error: { message: string } | null };
@@ -375,14 +385,13 @@ export async function markExpensePaid(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("audit_log").insert({
-    entity_type: "expense",
-    entity_id: expenseId,
-    action: "update",
-    actor_id: user.id,
-    after_snapshot: { status: "paid" },
+    entity_type: "expense", entity_id: expenseId,
+    action: "update", actor_id: user.id,
+    after_snapshot: { status: "paid", payment_reference: paymentReference },
     change_summary: "Expense marked as paid",
   });
 
   revalidatePath(`/${locale}/expenses`);
+  revalidatePath(`/${locale}/expenses/${expenseId}`);
   return { success: true };
 }

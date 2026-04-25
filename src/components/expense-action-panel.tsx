@@ -27,7 +27,7 @@ export function ExpenseActionPanel({
 }: ExpenseActionPanelProps) {
   const t = useTranslations("expenses");
   const [notes, setNotes] = useState("");
-  const [checkNumber, setCheckNumber] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +56,7 @@ export function ExpenseActionPanel({
   async function handlePay() {
     setLoading("pay");
     setError(null);
-    const result = await markExpensePaid(locale, expenseId, checkNumber || null);
+    const result = await markExpensePaid(locale, expenseId, paymentReference || null);
     setLoading(null);
     if (result.error) setError(result.error);
   }
@@ -102,11 +102,11 @@ export function ExpenseActionPanel({
       {canPay && (
         <>
           <div className="space-y-1.5">
-            <Label htmlFor="check-number">Check / Reference Number</Label>
+            <Label htmlFor="payment-reference">Payment Reference (cheque #, bank ref, etc.)</Label>
             <Input
-              id="check-number"
-              value={checkNumber}
-              onChange={(e) => setCheckNumber(e.target.value)}
+              id="payment-reference"
+              value={paymentReference}
+              onChange={(e) => setPaymentReference(e.target.value)}
               placeholder="Optional"
             />
           </div>

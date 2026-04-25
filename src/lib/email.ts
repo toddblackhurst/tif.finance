@@ -96,6 +96,57 @@ export async function sendExpenseApprovedEmail({
   });
 }
 
+// ─── Expense approved → notify treasurer to pay ──────────────────────────────
+
+export async function sendExpenseNeedsPaymentEmail({
+  treasurerEmails,
+  submitterName,
+  description,
+  amount,
+  campus,
+  approverName,
+  expenseId,
+  locale,
+}: {
+  treasurerEmails: string[];
+  submitterName: string;
+  description: string;
+  amount: number;
+  campus: string;
+  approverName: string;
+  expenseId: string;
+  locale: string;
+}) {
+  if (!treasurerEmails.length) return;
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const link = `${appUrl}/${locale}/expenses/${expenseId}`;
+  const fmt = (n: number) => `NT$${Math.round(n).toLocaleString()}`;
+
+  await resend.emails.send({
+    from: FROM,
+    to: treasurerEmails,
+    subject: `[TIF Finance] Ready to pay — ${fmt(amount)} · ${campus}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#222;">
+        <h2 style="color:#7c3aed;margin-bottom:4px;">Expense Approved — Payment Needed</h2>
+        <p style="color:#555;margin-top:0;">An expense has been approved and is ready for payment.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
+          <tr><td style="padding:6px 0;color:#666;width:120px;">Submitted by</td><td><strong>${submitterName}</strong></td></tr>
+          <tr><td style="padding:6px 0;color:#666;">Description</td><td><strong>${description}</strong></td></tr>
+          <tr><td style="padding:6px 0;color:#666;">Amount</td><td><strong style="color:#7c3aed;">${fmt(amount)}</strong></td></tr>
+          <tr><td style="padding:6px 0;color:#666;">Campus</td><td>${campus}</td></tr>
+          <tr><td style="padding:6px 0;color:#666;">Approved by</td><td>${approverName}</td></tr>
+        </table>
+        <a href="${link}" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;">
+          Mark as Paid →
+        </a>
+        <p style="margin-top:24px;font-size:12px;color:#999;">TIF Finance · Internal use only</p>
+      </div>
+    `,
+  });
+}
+
 // ─── Expense rejected → notify submitter ─────────────────────────────────────
 
 export async function sendExpenseRejectedEmail({

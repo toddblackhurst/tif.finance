@@ -15,7 +15,9 @@ interface ExpenseDetail {
   approval_notes: string | null;
   approved_at: string | null;
   paid_at: string | null;
-  submitter_id: string;
+  submitter_id: string | null;
+  submitter_name: string | null;
+  submitter_email: string | null;
   campuses: { name: string } | null;
   funds: { name: string } | null;
   submitter: { full_name: string | null; email: string | null } | null;
@@ -53,7 +55,8 @@ export default async function ExpenseDetailPage({
     .from("expenses")
     .select(`
       id, description, category, expense_date, amount, status,
-      notes, approval_notes, approved_at, paid_at, submitter_id,
+      notes, approval_notes, approved_at, paid_at,
+      submitter_id, submitter_name, submitter_email,
       campuses ( name ),
       funds ( name ),
       submitter:user_profiles!expenses_submitter_id_fkey ( full_name, email ),
@@ -108,8 +111,15 @@ export default async function ExpenseDetailPage({
           <div>
             <p className="text-gray-500">Submitted by</p>
             <p className="font-medium">
-              {expense.submitter?.full_name ?? expense.submitter?.email ?? "—"}
+              {expense.submitter?.full_name ??
+               expense.submitter_name ??
+               expense.submitter?.email ??
+               expense.submitter_email ??
+               "Church member"}
             </p>
+            {(expense.submitter_email && !expense.submitter_id) && (
+              <p className="text-xs text-gray-400">{expense.submitter_email}</p>
+            )}
           </div>
           {expense.approver && (
             <div>
@@ -145,7 +155,7 @@ export default async function ExpenseDetailPage({
         status={expense.status}
         role={role}
         currentUserId={user.id}
-        submitterId={expense.submitter_id}
+        submitterId={expense.submitter_id ?? ""}
       />
     </div>
   );

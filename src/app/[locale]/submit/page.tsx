@@ -6,7 +6,17 @@ import { useParams } from "next/navigation";
 const CAMPUSES = ["TIF North", "TIF South", "All Praise", "Hope Fellowship"];
 const CATEGORIES = ["ministry", "facilities", "staffing", "missions", "vbs", "worship", "admin", "other"] as const;
 
-const LABELS: Record<string, Record<string, string>> = {
+type LocaleLabels = {
+  title: string; subtitle: string; name: string; email: string;
+  campus: string; category: string; description: string; descHint: string;
+  amount: string; date: string; notes: string; notesHint: string;
+  submit: string; submitting: string; successTitle: string; successMsg: string;
+  submitAnother: string; selectCampus: string; selectCategory: string;
+  categories: Record<string, string>;
+  errors: Record<string, string>;
+};
+
+const LABELS: Record<string, LocaleLabels> = {
   en: {
     title:       "Expense / Reimbursement Request",
     subtitle:    "Submit an expense or request reimbursement. A finance team member will review your submission.",
