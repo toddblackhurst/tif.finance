@@ -171,24 +171,24 @@ export default async function PublicDashboardPage({
 
   // Chart data
   const campusDonationData = [
-    ...CAMPUS_ORDER.filter((c) => c !== "TIF System" && campusDonationMap[c]),
-    ...Object.keys(campusDonationMap).filter((c) => !CAMPUS_ORDER.includes(c) && c !== "TIF System"),
+    ...CAMPUS_ORDER.filter((c) => campusDonationMap[c]),
+    ...Object.keys(campusDonationMap).filter((c) => !CAMPUS_ORDER.includes(c)),
   ].map((campus) => ({ campus, total: campusDonationMap[campus] ?? 0 }))
    .filter((d) => d.total > 0)
    .sort((a, b) => b.total - a.total);
 
   const campusExpenseData = [
-    ...CAMPUS_ORDER.filter((c) => c !== "TIF System" && campusExpenseMap[c]),
-    ...Object.keys(campusExpenseMap).filter((c) => !CAMPUS_ORDER.includes(c) && c !== "TIF System"),
+    ...CAMPUS_ORDER.filter((c) => campusExpenseMap[c]),
+    ...Object.keys(campusExpenseMap).filter((c) => !CAMPUS_ORDER.includes(c)),
   ].map((campus) => ({ campus, total: campusExpenseMap[campus] ?? 0 }))
    .filter((d) => d.total > 0)
    .sort((a, b) => b.total - a.total);
 
-  // Sorted campus list for detail cards (TIF System excluded — it's a catch-all, not a real campus)
+  // Sorted campus list for detail cards
   const campusKeys = [
-    ...CAMPUS_ORDER.filter((c) => c !== "TIF System" && (campusDonationMap[c] || campusExpenseMap[c])),
+    ...CAMPUS_ORDER.filter((c) => campusDonationMap[c] || campusExpenseMap[c]),
     ...Object.keys({ ...campusDonationMap, ...campusExpenseMap })
-      .filter((c) => !CAMPUS_ORDER.includes(c) && c !== "TIF System"),
+      .filter((c) => !CAMPUS_ORDER.includes(c)),
   ];
 
   // Category rows sorted by total
