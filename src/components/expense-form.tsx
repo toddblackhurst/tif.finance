@@ -9,12 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { createExpense, type ExpenseFormState } from "@/app/actions/expenses";
 
 interface Campus { id: string; name: string }
-interface Fund { id: string; name: string }
 
 interface ExpenseFormProps {
   locale: string;
   campuses: Campus[];
-  funds: Fund[];
 }
 
 const INITIAL_STATE: ExpenseFormState = {};
@@ -37,7 +35,7 @@ function Buttons({ draftLabel, submitLabel, cancelHref }: { draftLabel: string; 
   );
 }
 
-export function ExpenseForm({ locale, campuses, funds }: ExpenseFormProps) {
+export function ExpenseForm({ locale, campuses }: ExpenseFormProps) {
   const t = useTranslations("expenses");
   const action = createExpense.bind(null, locale);
   const [state, formAction] = useFormState(action, INITIAL_STATE);
@@ -99,19 +97,6 @@ export function ExpenseForm({ locale, campuses, funds }: ExpenseFormProps) {
         >
           <option value="">—</option>
           {campuses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="fund_id">{t("fund")} *</Label>
-        <select
-          id="fund_id"
-          name="fund_id"
-          required
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-        >
-          <option value="">—</option>
-          {funds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
         </select>
       </div>
 

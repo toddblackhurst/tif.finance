@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { ExpenseForm } from "@/components/expense-form";
 
 interface CampusRow { id: string; name: string }
-interface FundRow { id: string; name: string }
 
 export default async function NewExpensePage({
   params,
@@ -15,13 +14,10 @@ export default async function NewExpensePage({
   const t = await getTranslations("expenses");
   const supabase = await createClient();
 
-  const [{ data: campusData }, { data: fundData }] = await Promise.all([
-    supabase.from("campuses").select("id, name").order("name"),
-    supabase.from("funds").select("id, name").eq("is_active", true).order("name"),
-  ]);
+  const { data: campusData } = await supabase
+    .from("campuses").select("id, name").order("name");
 
   const campuses = (campusData ?? []) as CampusRow[];
-  const funds = (fundData ?? []) as FundRow[];
 
   return (
     <div className="space-y-6">
@@ -34,7 +30,7 @@ export default async function NewExpensePage({
       </div>
 
       <div className="bg-white rounded-lg border p-6">
-        <ExpenseForm locale={locale} campuses={campuses} funds={funds} />
+        <ExpenseForm locale={locale} campuses={campuses} />
       </div>
     </div>
   );

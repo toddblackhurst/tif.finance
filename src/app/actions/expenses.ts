@@ -122,10 +122,9 @@ export async function createExpense(
   const expenseDate = formData.get("expense_date") as string;
   const amount = Number(formData.get("amount"));
   const campusId = formData.get("campus_id") as string;
-  const fundId = formData.get("fund_id") as string;
   const notes = (formData.get("notes") as string) || null;
 
-  if (!description || !category || !expenseDate || !amount || !campusId || !fundId) {
+  if (!description || !category || !expenseDate || !amount || !campusId) {
     return { error: "Please fill in all required fields." };
   }
   if (amount <= 0) return { error: "Amount must be greater than zero." };
@@ -143,7 +142,7 @@ export async function createExpense(
       submitter_id: user.id,
       description, category,
       expense_date: expenseDate,
-      amount, campus_id: campusId, fund_id: fundId,
+      amount, campus_id: campusId,
       notes, status,
     })
     .select("id")
@@ -156,7 +155,7 @@ export async function createExpense(
   await (supabase as any).from("audit_log").insert({
     entity_type: "expense", entity_id: expense.id,
     action: "create", actor_id: user.id,
-    after_snapshot: { description, amount, campus_id: campusId, fund_id: fundId, status },
+    after_snapshot: { description, amount, campus_id: campusId, status },
     change_summary: `Expense of NT$${amount.toLocaleString()} ${status === "submitted" ? "submitted" : "saved as draft"}`,
   });
 

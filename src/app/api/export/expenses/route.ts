@@ -34,7 +34,6 @@ export async function GET(req: NextRequest) {
       expense_date, description, category, amount, payment_method, status,
       notes, approval_notes,
       campuses ( name ),
-      funds ( name ),
       submitter:user_profiles!submitter_id ( full_name ),
       approver:user_profiles!approver_id ( full_name )
     `)
@@ -52,7 +51,6 @@ export async function GET(req: NextRequest) {
     amount: number; payment_method: string; status: string;
     notes: string | null; approval_notes: string | null;
     campuses: { name: string } | null;
-    funds: { name: string } | null;
     submitter: { full_name: string | null } | null;
     approver: { full_name: string | null } | null;
   };
@@ -63,7 +61,6 @@ export async function GET(req: NextRequest) {
     "Category":        r.category,
     "Amount (NT$)":    r.amount,
     "Campus":          r.campuses?.name ?? "",
-    "Fund":            r.funds?.name ?? "",
     "Payment Method":  r.payment_method,
     "Status":          r.status,
     "Submitted By":    r.submitter?.full_name ?? "",

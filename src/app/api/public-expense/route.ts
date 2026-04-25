@@ -63,12 +63,6 @@ export async function POST(req: NextRequest) {
   );
   if (!campus) return NextResponse.json({ error: "Campus not found" }, { status: 422 });
 
-  // Look up General fund (default for public submissions)
-  const fund = await fetchOne<{ id: string }>(
-    `funds?name=eq.General&select=id&limit=1`
-  );
-  if (!fund) return NextResponse.json({ error: "Default fund not configured" }, { status: 500 });
-
   const submitterName  = String(name).trim();
   const submitterEmail = String(email).trim().toLowerCase();
   const descriptionStr = String(description).trim();
@@ -78,7 +72,6 @@ export async function POST(req: NextRequest) {
     submitter_name:  submitterName,
     submitter_email: submitterEmail,
     campus_id:       campus.id,
-    fund_id:         fund.id,
     category,
     description:     descriptionStr,
     amount:          amountNum,
