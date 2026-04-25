@@ -147,7 +147,7 @@ export default async function PublicDashboardPage({
 
   // ── Misc ───────────────────────────────────────────────────────────────────
   const ytdNet = ytdDonations - ytdExpenses;
-  const campusCount = new Set(yearRollup.map((r) => r.campus)).size;
+  const campusCount = new Set(yearRollup.filter((r) => r.campus !== "TIF System").map((r) => r.campus)).size;
   const pctOfBudget = totalBudgeted > 0 ? (ytdExpenses / totalBudgeted) * 100 : 0;
 
   // % of year elapsed
@@ -163,30 +163,32 @@ export default async function PublicDashboardPage({
     year: "numeric", month: "long", day: "numeric",
   });
 
-  // Available years from rollup
-  const years = Array.from(new Set(rollup.map((r) => r.year))).sort((a, b) => b - a);
+  // Only show 2026 onwards — no historical data before launch
+  const years = Array.from(new Set(rollup.map((r) => r.year)))
+    .filter((y) => y >= 2026)
+    .sort((a, b) => b - a);
   if (!years.includes(currentYear)) years.unshift(currentYear);
 
   // Chart data
   const campusDonationData = [
-    ...CAMPUS_ORDER.filter((c) => campusDonationMap[c]),
-    ...Object.keys(campusDonationMap).filter((c) => !CAMPUS_ORDER.includes(c)),
+    ...CAMPUS_ORDER.filter((c) => c !== "TIF System" && campusDonationMap[c]),
+    ...Object.keys(campusDonationMap).filter((c) => !CAMPUS_ORDER.includes(c) && c !== "TIF System"),
   ].map((campus) => ({ campus, total: campusDonationMap[campus] ?? 0 }))
    .filter((d) => d.total > 0)
    .sort((a, b) => b.total - a.total);
 
   const campusExpenseData = [
-    ...CAMPUS_ORDER.filter((c) => campusExpenseMap[c]),
-    ...Object.keys(campusExpenseMap).filter((c) => !CAMPUS_ORDER.includes(c)),
+    ...CAMPUS_ORDER.filter((c) => c !== "TIF System" && campusExpenseMap[c]),
+    ...Object.keys(campusExpenseMap).filter((c) => !CAMPUS_ORDER.includes(c) && c !== "TIF System"),
   ].map((campus) => ({ campus, total: campusExpenseMap[campus] ?? 0 }))
    .filter((d) => d.total > 0)
    .sort((a, b) => b.total - a.total);
 
-  // Sorted campus list for detail cards
+  // Sorted campus list for detail cards (TIF System excluded — it's a catch-all, not a real campus)
   const campusKeys = [
-    ...CAMPUS_ORDER.filter((c) => campusDonationMap[c] || campusExpenseMap[c]),
+    ...CAMPUS_ORDER.filter((c) => c !== "TIF System" && (campusDonationMap[c] || campusExpenseMap[c])),
     ...Object.keys({ ...campusDonationMap, ...campusExpenseMap })
-      .filter((c) => !CAMPUS_ORDER.includes(c)),
+      .filter((c) => !CAMPUS_ORDER.includes(c) && c !== "TIF System"),
   ];
 
   // Category rows sorted by total
