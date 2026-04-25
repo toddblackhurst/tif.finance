@@ -41,13 +41,29 @@ export async function updateUserCampus(userId: string, campusId: string | null) 
   const { error, supabase } = await requireAdmin();
   if (error || !supabase) return { error };
 
+  // Keep the legacy FK in sync for display purposes
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: dbErr } = await (supabase as any)
+  await (supabase as any)
     .from("user_profiles")
     .update({ assigned_campus_id: campusId || null })
     .eq("id", userId);
 
-  if (dbErr) return { error: dbErr.message };
+  // Replace all junction-table rows for this user (RLS uses this table)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: delErr } = await (supabase as any)
+    .from("user_campus_assignments")
+    .delete()
+    .eq("user_id", userId);
+  if (delErr) return { error: delErr.message };
+
+  if (campusId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: insErr } = await (supabase as any)
+      .from("user_campus_assignments")
+      .insert({ user_id: userId, campus_id: campusId });
+    if (insErr) return { error: insErr.message };
+  }
+
   revalidatePath("/admin");
   return { ok: true };
 }

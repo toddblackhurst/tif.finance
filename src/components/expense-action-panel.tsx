@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +27,7 @@ export function ExpenseActionPanel({
   submitterId,
 }: ExpenseActionPanelProps) {
   const t = useTranslations("expenses");
+  const router = useRouter();
   const [notes, setNotes] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export function ExpenseActionPanel({
     const result = await approveExpense(locale, expenseId, notes || null);
     setLoading(null);
     if (result.error) setError(result.error);
+    else router.refresh();
   }
 
   async function handleReject() {
@@ -51,6 +54,7 @@ export function ExpenseActionPanel({
     const result = await rejectExpense(locale, expenseId, notes || null);
     setLoading(null);
     if (result.error) setError(result.error);
+    else router.refresh();
   }
 
   async function handlePay() {
@@ -59,6 +63,7 @@ export function ExpenseActionPanel({
     const result = await markExpensePaid(locale, expenseId, paymentReference || null);
     setLoading(null);
     if (result.error) setError(result.error);
+    else router.refresh();
   }
 
   return (
@@ -129,6 +134,7 @@ export function ExpenseActionPanel({
               const result = await submitDraftExpense(locale, expenseId);
               setLoading(null);
               if (result.error) setError(result.error);
+              else router.refresh();
             }}
             disabled={loading !== null}
           >

@@ -8,7 +8,6 @@ interface UserRow {
   email: string | null;
   role: string;
   assigned_campus_id: string | null;
-  campuses: { name: string } | null;
 }
 
 interface Campus {
@@ -31,16 +30,28 @@ export default async function AdminPage({
     .from("user_profiles").select("role").eq("id", user.id).single();
   if ((profileData as { role: string } | null)?.role !== "admin") redirect(`/${locale}`);
 
-  const [usersResult, campusesResult] = await Promise.all([
+  const [usersResult, campusesResult, assignmentsResult] = await Promise.all([
     supabase
       .from("user_profiles")
-      .select("id, full_name, email, role, assigned_campus_id, campuses(name)")
+      .select("id, full_name, email, role, assigned_campus_id")
       .order("full_name"),
     supabase.from("campuses").select("id, name").order("name"),
+    supabase
+      .from("user_campus_assignments")
+      .select("user_id, campuses(name)"),
   ]);
 
   const users    = (usersResult.data    ?? []) as unknown as UserRow[];
   const campuses = (campusesResult.data ?? []) as Campus[];
+
+  // Build userId → campus name list from junction table
+  const campusMap = new Map<string, string[]>();
+  for (const row of (assignmentsResult.data ?? []) as unknown as { user_id: string; campuses: { name: string } | null }[]) {
+    if (!row.campuses?.name) continue;
+    const list = campusMap.get(row.user_id) ?? [];
+    list.push(row.campuses.name);
+    campusMap.set(row.user_id, list);
+  }
 
   const roleCounts = users.reduce<Record<string, number>>((acc, u) => {
     acc[u.role] = (acc[u.role] ?? 0) + 1; return acc;
@@ -84,6 +95,7 @@ export default async function AdminPage({
                   key={u.id}
                   user={u}
                   campuses={campuses}
+                  assignedCampusNames={campusMap.get(u.id) ?? []}
                   currentUserId={user.id}
                 />
               ))}

@@ -1,7 +1,9 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
+import { ExpenseFilters } from "@/components/expense-filters";
 
 interface ExpenseRow {
   id: string;
@@ -24,14 +26,23 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default async function ExpensesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ status?: string }>;
 }) {
   const { locale } = await params;
+  const { status: statusFilter } = await searchParams;
   const t = await getTranslations("expenses");
   const supabase = await createClient();
 
-  const { data: rawData } = await supabase
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profileData } = await supabase
+    .from("user_profiles").select("role").eq("id", user?.id ?? "").single();
+  const role = (profileData as { role: string } | null)?.role ?? "viewer";
+  const canSubmit = role === "admin" || role === "campus-finance";
+
+  let query = supabase
     .from("expenses")
     .select(`
       id, expense_date, description, amount, status, category,
@@ -40,8 +51,11 @@ export default async function ExpensesPage({
     `)
     .is("deleted_at", null)
     .order("expense_date", { ascending: false })
-    .limit(50);
+    .limit(100);
 
+  if (statusFilter) query = query.eq("status", statusFilter);
+
+  const { data: rawData } = await query;
   const expenses = (rawData ?? []) as ExpenseRow[];
 
   return (
@@ -55,10 +69,23 @@ export default async function ExpensesPage({
           >
             ↓ Export CSV
           </a>
-          <Button asChild>
-            <Link href={`/${locale}/expenses/new`}>{t("newExpense")}</Link>
-          </Button>
+          {canSubmit && (
+            <Button asChild>
+              <Link href={`/${locale}/expenses/new`}>{t("newExpense")}</Link>
+            </Button>
+          )}
         </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Suspense>
+          <ExpenseFilters />
+        </Suspense>
+        {statusFilter && (
+          <span className="text-sm text-gray-500">
+            Showing {expenses.length} result{expenses.length !== 1 ? "s" : ""}
+          </span>
+        )}
       </div>
 
       <div className="rounded-lg border bg-white overflow-hidden">
@@ -94,7 +121,7 @@ export default async function ExpensesPage({
                   </Link>
                 </td>
                 <td className="px-4 py-3">{e.campuses?.name ?? "—"}</td>
-                <td className="px-4 py-3 capitalize">{e.category}</td>
+                <td className="px-4 py-3">{t(`categories.${e.category}`)}</td>
                 <td className="px-4 py-3 text-right font-mono">
                   NT${e.amount.toLocaleString()}
                 </td>

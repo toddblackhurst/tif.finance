@@ -11,7 +11,6 @@ interface UserRow {
   email: string | null;
   role: string;
   assigned_campus_id: string | null;
-  campuses: { name: string } | null;
 }
 
 interface Campus { id: string; name: string }
@@ -31,10 +30,12 @@ const ROLE_COLORS: Record<string, string> = {
 export function UserRoleEditor({
   user,
   campuses,
+  assignedCampusNames,
   currentUserId,
 }: {
   user: UserRow;
   campuses: Campus[];
+  assignedCampusNames: string[];
   currentUserId: string;
 }) {
   const [editing, setEditing]         = useState(false);
@@ -55,6 +56,10 @@ export function UserRoleEditor({
       setEditing(false);
     });
   };
+
+  const campusDisplay = assignedCampusNames.length
+    ? assignedCampusNames.join(", ")
+    : "All";
 
   return (
     <tr className={`hover:bg-gray-50 ${editing ? "bg-blue-50" : ""}`}>
@@ -98,7 +103,7 @@ export function UserRoleEditor({
             ))}
           </select>
         ) : (
-          <span className="text-gray-600">{user.campuses?.name ?? "All"}</span>
+          <span className="text-gray-600">{campusDisplay}</span>
         )}
       </td>
 

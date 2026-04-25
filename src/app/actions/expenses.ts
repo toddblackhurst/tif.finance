@@ -8,7 +8,13 @@ import {
   sendExpenseApprovedEmail,
   sendExpenseRejectedEmail,
   sendExpenseNeedsPaymentEmail,
+  sendExpensePaidEmail,
 } from "@/lib/email";
+
+// expData.submitter is null when submitter_id is null (public/unauthenticated submission)
+function isPublicSubmission(expData: { submitter: { full_name: string | null; email: string | null } | null }): boolean {
+  return expData.submitter === null;
+}
 
 export interface ExpenseFormState {
   error?: string;
@@ -275,7 +281,9 @@ export async function approveExpense(
         await sendExpenseApprovedEmail({
           submitterEmail, submitterName,
           description: expData.description, amount: expData.amount,
-          approverName, expenseId, locale,
+          approverName,
+          expenseId: isPublicSubmission(expData) ? null : expenseId,
+          locale,
         });
       }
 
@@ -344,7 +352,8 @@ export async function rejectExpense(
           submitterEmail, submitterName,
           description: expData.description, amount: expData.amount,
           approverName, rejectionNote: approvalNotes,
-          expenseId, locale,
+          expenseId: isPublicSubmission(expData) ? null : expenseId,
+          locale,
         });
       }
     }
@@ -390,6 +399,22 @@ export async function markExpensePaid(
     after_snapshot: { status: "paid", payment_reference: paymentReference },
     change_summary: "Expense marked as paid",
   });
+
+  try {
+    const expData = await getExpenseWithPeople(supabase, expenseId);
+    if (expData) {
+      const { name: submitterName, email: submitterEmail } = resolveSubmitter(expData);
+      if (submitterEmail) {
+        await sendExpensePaidEmail({
+          submitterEmail, submitterName,
+          description: expData.description, amount: expData.amount,
+          paymentReference,
+          expenseId: isPublicSubmission(expData) ? null : expenseId,
+          locale,
+        });
+      }
+    }
+  } catch (e) { console.error("Email failed:", e); }
 
   revalidatePath(`/${locale}/expenses`);
   revalidatePath(`/${locale}/expenses/${expenseId}`);
