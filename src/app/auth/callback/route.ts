@@ -28,7 +28,14 @@ export async function GET(request: NextRequest) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return response;
+    // Temporary debug: show exact error instead of silently redirecting
+    return new Response(
+      `<pre>Auth error: ${JSON.stringify(error, null, 2)}\norigin: ${origin}\ncode present: ${!!code}</pre>`,
+      { status: 400, headers: { "content-type": "text/html" } }
+    );
   }
 
-  return NextResponse.redirect(`${origin}/en/login?error=auth`);
+  return new Response(`<pre>No code in URL\norigin: ${origin}\nurl: ${request.url}</pre>`, {
+    status: 400, headers: { "content-type": "text/html" },
+  });
 }
