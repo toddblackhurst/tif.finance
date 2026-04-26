@@ -6,13 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { createExpense, type ExpenseFormState } from "@/app/actions/expenses";
+import { createExpense, updateExpense, type ExpenseFormState } from "@/app/actions/expenses";
 
 interface Campus { id: string; name: string }
 
 interface ExpenseFormProps {
   locale: string;
   campuses: Campus[];
+  editId?: string;
+  initialValues?: {
+    description: string;
+    category: string;
+    expense_date: string;
+    amount: number;
+    campus_id: string;
+    notes?: string | null;
+  };
 }
 
 const INITIAL_STATE: ExpenseFormState = {};
@@ -35,9 +44,11 @@ function Buttons({ draftLabel, submitLabel, cancelHref }: { draftLabel: string; 
   );
 }
 
-export function ExpenseForm({ locale, campuses }: ExpenseFormProps) {
+export function ExpenseForm({ locale, campuses, editId, initialValues }: ExpenseFormProps) {
   const t = useTranslations("expenses");
-  const action = createExpense.bind(null, locale);
+  const action = editId
+    ? updateExpense.bind(null, locale, editId)
+    : createExpense.bind(null, locale);
   const [state, formAction] = useFormState(action, INITIAL_STATE);
 
   return (
@@ -50,15 +61,18 @@ export function ExpenseForm({ locale, campuses }: ExpenseFormProps) {
 
       <div className="space-y-1.5">
         <Label htmlFor="description">{t("description")} *</Label>
-        <Input id="description" name="description" required placeholder="e.g. Sunday sound system repair" />
+        <Input
+          id="description" name="description" required
+          placeholder="e.g. Sunday sound system repair"
+          defaultValue={initialValues?.description ?? ""}
+        />
       </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="category">{t("category")} *</Label>
         <select
-          id="category"
-          name="category"
-          required
+          id="category" name="category" required
+          defaultValue={initialValues?.category ?? ""}
           className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
         >
           <option value="">—</option>
@@ -71,11 +85,8 @@ export function ExpenseForm({ locale, campuses }: ExpenseFormProps) {
       <div className="space-y-1.5">
         <Label htmlFor="expense_date">{t("expenseDate")} *</Label>
         <Input
-          id="expense_date"
-          name="expense_date"
-          type="date"
-          required
-          defaultValue={new Date().toISOString().slice(0, 10)}
+          id="expense_date" name="expense_date" type="date" required
+          defaultValue={initialValues?.expense_date ?? new Date().toISOString().slice(0, 10)}
         />
       </div>
 
@@ -83,16 +94,19 @@ export function ExpenseForm({ locale, campuses }: ExpenseFormProps) {
         <Label htmlFor="amount">{t("amount")} *</Label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">NT$</span>
-          <Input id="amount" name="amount" type="number" min="1" step="1" required className="pl-10" placeholder="0" />
+          <Input
+            id="amount" name="amount" type="number" min="1" step="1" required
+            className="pl-10" placeholder="0"
+            defaultValue={initialValues?.amount ?? ""}
+          />
         </div>
       </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="campus_id">{t("campus")} *</Label>
         <select
-          id="campus_id"
-          name="campus_id"
-          required
+          id="campus_id" name="campus_id" required
+          defaultValue={initialValues?.campus_id ?? ""}
           className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
         >
           <option value="">—</option>
@@ -102,13 +116,15 @@ export function ExpenseForm({ locale, campuses }: ExpenseFormProps) {
 
       <div className="space-y-1.5">
         <Label htmlFor="notes">{t("notes")}</Label>
-        <Textarea id="notes" name="notes" rows={3} placeholder="Vendor info, purpose, etc." />
+        <Textarea id="notes" name="notes" rows={3} placeholder="Vendor info, purpose, etc."
+          defaultValue={initialValues?.notes ?? ""}
+        />
       </div>
 
       <Buttons
-        submitLabel={t("submit")}
-        draftLabel={t("saveDraft")}
-        cancelHref={`/${locale}/expenses`}
+        submitLabel={editId ? "Save Changes" : t("submit")}
+        draftLabel={editId ? "Save as Draft" : t("saveDraft")}
+        cancelHref={editId ? `/${locale}/expenses/${editId}` : `/${locale}/expenses`}
       />
     </form>
   );

@@ -70,12 +70,20 @@ export default async function DonorDetailPage({
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center gap-3">
-        <Link href={`/${locale}/donors`} className="text-sm text-gray-500 hover:text-gray-700">
-          ← {t("title")}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link href={`/${locale}/donors`} className="text-sm text-gray-500 hover:text-gray-700">
+            ← {t("title")}
+          </Link>
+          <span className="text-gray-300">/</span>
+          <h1 className="text-xl font-bold">{donor.display_name}</h1>
+        </div>
+        <Link
+          href={`/${locale}/donors/${id}/edit`}
+          className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Edit
         </Link>
-        <span className="text-gray-300">/</span>
-        <h1 className="text-xl font-bold">{donor.display_name}</h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

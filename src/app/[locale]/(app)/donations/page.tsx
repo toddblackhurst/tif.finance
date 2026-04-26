@@ -64,6 +64,7 @@ export default async function DonationsPage({
               <th className="px-4 py-3 text-left">{t("fund")}</th>
               <th className="px-4 py-3 text-right">{t("amount")}</th>
               <th className="px-4 py-3 text-left">{t("paymentMethod")}</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -77,6 +78,14 @@ export default async function DonationsPage({
                   NT${d.amount.toLocaleString()}
                 </td>
                 <td className="px-4 py-3 capitalize">{d.payment_method}</td>
+                <td className="px-4 py-3">
+                  <Link
+                    href={`/${locale}/donations/${d.id}/edit`}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Edit
+                  </Link>
+                </td>
               </tr>
             ))}
           </tbody>

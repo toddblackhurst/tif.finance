@@ -71,12 +71,22 @@ export default async function ExpenseDetailPage({
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="flex items-center gap-3">
-        <Link href={`/${locale}/expenses`} className="text-sm text-gray-500 hover:text-gray-700">
-          ← {t("title")}
-        </Link>
-        <span className="text-gray-300">/</span>
-        <h1 className="text-xl font-bold">{expense.description}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link href={`/${locale}/expenses`} className="text-sm text-gray-500 hover:text-gray-700">
+            ← {t("title")}
+          </Link>
+          <span className="text-gray-300">/</span>
+          <h1 className="text-xl font-bold">{expense.description}</h1>
+        </div>
+        {(role === "admin" || user.id === expense.submitter_id) && (
+          <Link
+            href={`/${locale}/expenses/${id}/edit`}
+            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Edit
+          </Link>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border divide-y">

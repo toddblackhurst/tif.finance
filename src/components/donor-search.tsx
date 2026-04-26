@@ -14,14 +14,16 @@ interface Donor {
 interface DonorSearchProps {
   value: string | null;
   onChange: (donorId: string | null, displayName: string) => void;
+  initialDonorId?: string | null;
+  initialDonorName?: string | null;
 }
 
-export function DonorSearch({ onChange }: DonorSearchProps) {
+export function DonorSearch({ onChange, initialDonorId, initialDonorName }: DonorSearchProps) {
   const t = useTranslations("donations");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialDonorName ?? "");
   const [results, setResults] = useState<Donor[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [selectedName, setSelectedName] = useState("");
+  const [selected, setSelected] = useState<string | null>(initialDonorId ?? null);
+  const [selectedName, setSelectedName] = useState(initialDonorName ?? "");
   const [showDropdown, setShowDropdown] = useState(false);
   const [creating, setCreating] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);

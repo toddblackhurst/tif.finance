@@ -108,6 +108,59 @@ function resolveSubmitter(expData: Awaited<ReturnType<typeof getExpenseWithPeopl
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+export async function updateExpense(
+  locale: string,
+  expenseId: string,
+  _prev: ExpenseFormState,
+  formData: FormData
+): Promise<ExpenseFormState> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: profile } = await supabase
+    .from("user_profiles").select("role").eq("id", user.id).single();
+  const role = (profile as { role: string } | null)?.role ?? "viewer";
+
+  const description = formData.get("description") as string;
+  const category = formData.get("category") as string;
+  const expenseDate = formData.get("expense_date") as string;
+  const amount = Number(formData.get("amount"));
+  const campusId = formData.get("campus_id") as string;
+  const notes = (formData.get("notes") as string) || null;
+
+  if (!description || !category || !expenseDate || !amount || !campusId)
+    return { error: "Please fill in all required fields." };
+  if (amount <= 0) return { error: "Amount must be greater than zero." };
+  if (!EXPENSE_CATEGORIES.includes(category as typeof EXPENSE_CATEGORIES[number]))
+    return { error: "Invalid category." };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (supabase as any)
+    .from("expenses")
+    .update({ description, category, expense_date: expenseDate, amount, campus_id: campusId, notes })
+    .eq("id", expenseId);
+
+  if (role !== "admin") {
+    query = query.eq("submitter_id", user.id).in("status", ["draft", "submitted"]);
+  }
+
+  const { error } = await query as { error: { message: string } | null };
+  if (error) return { error: error.message };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any).from("audit_log").insert({
+    entity_type: "expense", entity_id: expenseId,
+    action: "update", actor_id: user.id,
+    after_snapshot: { description, amount, campus_id: campusId },
+    change_summary: `Expense updated to NT$${amount.toLocaleString()}`,
+  });
+
+  revalidatePath(`/${locale}/expenses`);
+  revalidatePath(`/${locale}/expenses/${expenseId}`);
+  redirect(`/${locale}/expenses/${expenseId}`);
+}
+
 export async function createExpense(
   locale: string,
   _prev: ExpenseFormState,
