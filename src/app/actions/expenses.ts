@@ -139,14 +139,17 @@ export async function updateExpense(
   let query = (supabase as any)
     .from("expenses")
     .update({ description, category, expense_date: expenseDate, amount, campus_id: campusId, notes })
-    .eq("id", expenseId);
+    .eq("id", expenseId)
+    .is("deleted_at", null)
+    .select("id");
 
   if (role !== "admin") {
     query = query.eq("submitter_id", user.id).in("status", ["draft", "submitted"]);
   }
 
-  const { error } = await query as { error: { message: string } | null };
+  const { data: updated, error } = await query as { data: { id: string }[] | null; error: { message: string } | null };
   if (error) return { error: error.message };
+  if (!updated || updated.length === 0) return { error: "Expense not found or you don't have permission to edit it." };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("audit_log").insert({

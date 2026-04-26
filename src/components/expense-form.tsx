@@ -27,8 +27,22 @@ interface ExpenseFormProps {
 const INITIAL_STATE: ExpenseFormState = {};
 const CATEGORIES = ["ministry", "facilities", "staffing", "missions", "vbs", "worship", "admin", "other"] as const;
 
-function Buttons({ draftLabel, submitLabel, cancelHref }: { draftLabel: string; submitLabel: string; cancelHref: string }) {
+function Buttons({ draftLabel, submitLabel, cancelHref, editMode }: {
+  draftLabel: string; submitLabel: string; cancelHref: string; editMode?: boolean;
+}) {
   const { pending } = useFormStatus();
+  if (editMode) {
+    return (
+      <div className="flex gap-3 pt-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : submitLabel}
+        </Button>
+        <Button type="button" variant="outline" asChild>
+          <a href={cancelHref}>Cancel</a>
+        </Button>
+      </div>
+    );
+  }
   return (
     <div className="flex gap-3 pt-2">
       <Button type="submit" name="_action" value="submit" disabled={pending}>
@@ -123,8 +137,9 @@ export function ExpenseForm({ locale, campuses, editId, initialValues }: Expense
 
       <Buttons
         submitLabel={editId ? "Save Changes" : t("submit")}
-        draftLabel={editId ? "Save as Draft" : t("saveDraft")}
+        draftLabel={t("saveDraft")}
         cancelHref={editId ? `/${locale}/expenses/${editId}` : `/${locale}/expenses`}
+        editMode={!!editId}
       />
     </form>
   );

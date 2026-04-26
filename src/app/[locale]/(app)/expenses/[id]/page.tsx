@@ -79,7 +79,7 @@ export default async function ExpenseDetailPage({
           <span className="text-gray-300">/</span>
           <h1 className="text-xl font-bold">{expense.description}</h1>
         </div>
-        {(role === "admin" || user.id === expense.submitter_id) && (
+        {(role === "admin" || role === "campus-finance") && (
           <Link
             href={`/${locale}/expenses/${id}/edit`}
             className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"

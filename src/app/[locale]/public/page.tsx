@@ -137,13 +137,23 @@ export default async function PublicDashboardPage({
   }
 
   // ── Aggregate: Budget ──────────────────────────────────────────────────────
+  // TIF System holds central/shared budget items (ops, church care, fixed costs).
+  // Campus entries hold per-campus variable allocations shown in the budget table.
   const campusBudget: Record<string, { budgeted: number; actual: number }> = {};
+  let totalBudgeted = 0; // Central expense budget (TIF System only) — shown as "Annual Budget" KPI
   for (const r of variance) {
+    if (r.campus === "TIF System") {
+      totalBudgeted += r.budgeted_amount;
+      continue;
+    }
     if (!campusBudget[r.campus]) campusBudget[r.campus] = { budgeted: 0, actual: 0 };
     campusBudget[r.campus].budgeted += r.budgeted_amount;
     campusBudget[r.campus].actual   += r.actual_donations;
   }
-  const totalBudgeted = Object.values(campusBudget).reduce((s, v) => s + v.budgeted, 0);
+  // Fallback: if no TIF System budget is set, sum all campuses
+  if (totalBudgeted === 0)
+    totalBudgeted = Object.values(campusBudget).reduce((s, v) => s + v.budgeted, 0);
+  const totalCampusBudgeted = Object.values(campusBudget).reduce((s, v) => s + v.budgeted, 0);
 
   // ── Misc ───────────────────────────────────────────────────────────────────
   const ytdNet = ytdDonations - ytdExpenses;
@@ -446,7 +456,7 @@ export default async function PublicDashboardPage({
                       const v = campusBudget[campus];
                       const pct = v.budgeted > 0 ? (v.actual / v.budgeted) * 100 : 0;
                       const remaining = v.budgeted - v.actual;
-                      const allocPct = totalBudgeted > 0 ? (v.budgeted / totalBudgeted) * 100 : 0;
+                      const allocPct = totalCampusBudgeted > 0 ? (v.budgeted / totalCampusBudgeted) * 100 : 0;
                       return (
                         <tr key={campus} className="hover:bg-gray-50">
                           <td className="px-5 py-2.5 font-medium">{campus}</td>
@@ -477,11 +487,11 @@ export default async function PublicDashboardPage({
                         {fmt(Object.values(campusBudget).reduce((s, v) => s + v.actual, 0))}
                       </td>
                       <td className="px-5 py-2.5 text-right font-mono">
-                        {fmt(totalBudgeted - Object.values(campusBudget).reduce((s, v) => s + v.actual, 0))}
+                        {fmt(totalCampusBudgeted - Object.values(campusBudget).reduce((s, v) => s + v.actual, 0))}
                       </td>
                       <td className="px-5 py-2.5 text-right">
-                        {totalBudgeted > 0
-                          ? `${(Object.values(campusBudget).reduce((s, v) => s + v.actual, 0) / totalBudgeted * 100).toFixed(1)}%`
+                        {totalCampusBudgeted > 0
+                          ? `${(Object.values(campusBudget).reduce((s, v) => s + v.actual, 0) / totalCampusBudgeted * 100).toFixed(1)}%`
                           : "—"}
                       </td>
                     </tr>
