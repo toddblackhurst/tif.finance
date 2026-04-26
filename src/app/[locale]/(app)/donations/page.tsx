@@ -1,7 +1,9 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
+import { FilterBar } from "@/components/filter-bar";
 
 interface DonationRow {
   id: string;
@@ -14,16 +16,31 @@ interface DonationRow {
   funds: { name: string } | null;
 }
 
+interface CampusRow { id: string; name: string }
+
+function parseMonth(m: string): { start: string; end: string } {
+  const [y, mo] = m.split("-").map(Number);
+  const start = `${y}-${String(mo).padStart(2, "0")}-01`;
+  const end = mo === 12 ? `${y + 1}-01-01` : `${y}-${String(mo + 1).padStart(2, "0")}-01`;
+  return { start, end };
+}
+
 export default async function DonationsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ campus?: string; month?: string }>;
 }) {
   const { locale } = await params;
+  const { campus: campusFilter, month: monthFilter } = await searchParams;
   const t = await getTranslations("donations");
   const supabase = await createClient();
 
-  const { data: rawData } = await supabase
+  const { data: campusData } = await supabase.from("campuses").select("id, name").order("name");
+  const campuses = (campusData ?? []) as CampusRow[];
+
+  let query = supabase
     .from("donations")
     .select(`
       id, gift_date, amount, payment_method, notes,
@@ -33,9 +50,19 @@ export default async function DonationsPage({
     `)
     .is("deleted_at", null)
     .order("gift_date", { ascending: false })
-    .limit(50);
+    .limit(200);
 
+  if (campusFilter) query = query.eq("campus_id", campusFilter);
+  if (monthFilter) {
+    const { start, end } = parseMonth(monthFilter);
+    query = query.gte("gift_date", start).lt("gift_date", end);
+  }
+
+  const { data: rawData } = await query;
   const donations = (rawData ?? []) as DonationRow[];
+
+  const totalAmount = donations.reduce((s, d) => s + d.amount, 0);
+  const hasFilter = !!(campusFilter || monthFilter);
 
   return (
     <div className="space-y-4">
@@ -54,6 +81,17 @@ export default async function DonationsPage({
         </div>
       </div>
 
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <Suspense>
+          <FilterBar campuses={campuses} />
+        </Suspense>
+        {hasFilter && (
+          <span className="text-sm text-gray-500">
+            {donations.length} result{donations.length !== 1 ? "s" : ""} · NT${totalAmount.toLocaleString()}
+          </span>
+        )}
+      </div>
+
       <div className="rounded-lg border bg-white overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-600">
@@ -68,6 +106,13 @@ export default async function DonationsPage({
             </tr>
           </thead>
           <tbody className="divide-y">
+            {donations.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                  No donations found.
+                </td>
+              </tr>
+            )}
             {donations.map((d) => (
               <tr key={d.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">{d.gift_date}</td>
@@ -89,6 +134,19 @@ export default async function DonationsPage({
               </tr>
             ))}
           </tbody>
+          {donations.length > 0 && (
+            <tfoot className="bg-gray-50 font-semibold text-sm border-t">
+              <tr>
+                <td colSpan={4} className="px-4 py-2 text-gray-600">
+                  Total ({donations.length})
+                </td>
+                <td className="px-4 py-2 text-right font-mono">
+                  NT${totalAmount.toLocaleString()}
+                </td>
+                <td colSpan={2} />
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
     </div>

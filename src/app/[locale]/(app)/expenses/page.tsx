@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
-import { ExpenseFilters } from "@/components/expense-filters";
+import { FilterBar } from "@/components/filter-bar";
 
 interface ExpenseRow {
   id: string;
@@ -16,6 +16,8 @@ interface ExpenseRow {
   funds: { name: string } | null;
 }
 
+interface CampusRow { id: string; name: string }
+
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-gray-100 text-gray-700",
   submitted: "bg-blue-100 text-blue-700",
@@ -24,15 +26,22 @@ const STATUS_COLORS: Record<string, string> = {
   paid: "bg-purple-100 text-purple-700",
 };
 
+function parseMonth(m: string): { start: string; end: string } {
+  const [y, mo] = m.split("-").map(Number);
+  const start = `${y}-${String(mo).padStart(2, "0")}-01`;
+  const end = mo === 12 ? `${y + 1}-01-01` : `${y}-${String(mo + 1).padStart(2, "0")}-01`;
+  return { start, end };
+}
+
 export default async function ExpensesPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; campus?: string; month?: string }>;
 }) {
   const { locale } = await params;
-  const { status: statusFilter } = await searchParams;
+  const { status: statusFilter, campus: campusFilter, month: monthFilter } = await searchParams;
   const t = await getTranslations("expenses");
   const supabase = await createClient();
 
@@ -41,6 +50,9 @@ export default async function ExpensesPage({
     .from("user_profiles").select("role").eq("id", user?.id ?? "").single();
   const role = (profileData as { role: string } | null)?.role ?? "viewer";
   const canSubmit = role === "admin" || role === "campus-finance";
+
+  const { data: campusData } = await supabase.from("campuses").select("id, name").order("name");
+  const campuses = (campusData ?? []) as CampusRow[];
 
   let query = supabase
     .from("expenses")
@@ -51,12 +63,20 @@ export default async function ExpensesPage({
     `)
     .is("deleted_at", null)
     .order("expense_date", { ascending: false })
-    .limit(100);
+    .limit(200);
 
   if (statusFilter) query = query.eq("status", statusFilter);
+  if (campusFilter) query = query.eq("campus_id", campusFilter);
+  if (monthFilter) {
+    const { start, end } = parseMonth(monthFilter);
+    query = query.gte("expense_date", start).lt("expense_date", end);
+  }
 
   const { data: rawData } = await query;
   const expenses = (rawData ?? []) as ExpenseRow[];
+
+  const totalAmount = expenses.reduce((s, e) => s + e.amount, 0);
+  const hasFilter = !!(statusFilter || campusFilter || monthFilter);
 
   return (
     <div className="space-y-4">
@@ -77,13 +97,13 @@ export default async function ExpensesPage({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <Suspense>
-          <ExpenseFilters />
+          <FilterBar campuses={campuses} showStatus />
         </Suspense>
-        {statusFilter && (
+        {hasFilter && (
           <span className="text-sm text-gray-500">
-            Showing {expenses.length} result{expenses.length !== 1 ? "s" : ""}
+            {expenses.length} result{expenses.length !== 1 ? "s" : ""} · NT${totalAmount.toLocaleString()}
           </span>
         )}
       </div>
@@ -104,7 +124,7 @@ export default async function ExpensesPage({
             {expenses.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                  No expenses yet.
+                  No expenses found.
                 </td>
               </tr>
             )}
@@ -133,6 +153,19 @@ export default async function ExpensesPage({
               </tr>
             ))}
           </tbody>
+          {expenses.length > 0 && (
+            <tfoot className="bg-gray-50 font-semibold text-sm border-t">
+              <tr>
+                <td colSpan={4} className="px-4 py-2 text-gray-600">
+                  Total ({expenses.length})
+                </td>
+                <td className="px-4 py-2 text-right font-mono">
+                  NT${totalAmount.toLocaleString()}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
     </div>
