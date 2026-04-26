@@ -70,7 +70,8 @@ export default async function DonorsPage({
       .gte("gift_date", start)
       .lt("gift_date", end)
       .is("deleted_at", null)
-      .not("donor_id", "is", null);
+      .not("donor_id", "is", null)
+      .limit(2000);
 
     if (campusFilter) donQuery = donQuery.eq("campus_id", campusFilter);
 

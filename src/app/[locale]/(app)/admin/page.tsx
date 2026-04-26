@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { UserRoleEditor } from "@/components/user-role-editor";
+import { InviteUserForm } from "@/components/invite-user-form";
 
 interface UserRow {
   id: string;
@@ -104,15 +105,8 @@ export default async function AdminPage({
         </div>
       </section>
 
-      {/* Onboarding instructions */}
-      <section className="bg-blue-50 border border-blue-200 rounded-lg p-5">
-        <h2 className="text-sm font-semibold text-blue-800 mb-1">Adding New Staff</h2>
-        <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
-          <li>Send them the app URL and ask them to sign in with their Google account</li>
-          <li>They&apos;ll appear in this list automatically as <strong>Viewer</strong></li>
-          <li>Click <strong>Edit</strong> next to their name to assign the correct role and campus</li>
-        </ol>
-      </section>
+      {/* Invite new staff */}
+      <InviteUserForm campuses={campuses} />
     </div>
   );
 }

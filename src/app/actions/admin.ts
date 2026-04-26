@@ -1,9 +1,19 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 
 type Role = "admin" | "campus-finance" | "viewer";
+
+function makeAuthAdminClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+}
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -68,3 +78,53 @@ export async function updateUserCampus(userId: string, campusId: string | null) 
   return { ok: true };
 }
 
+// ─── Invite a new user ────────────────────────────────────────────────────────
+export async function sendInvitation(prevState: unknown, formData: FormData) {
+  const { error } = await requireAdmin();
+  if (error) return { error };
+
+  const email    = (formData.get("email") as string | null)?.trim().toLowerCase() ?? "";
+  const role     = (formData.get("role") as string | null) ?? "viewer";
+  const campusId = (formData.get("campus_id") as string | null) || null;
+
+  if (!email.includes("@")) return { error: "Enter a valid email address." };
+  const VALID_ROLES: Role[] = ["admin", "campus-finance", "viewer"];
+  if (!VALID_ROLES.includes(role as Role)) return { error: "Invalid role." };
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  // Send the invitation email via Supabase Auth Admin API
+  const authAdmin = makeAuthAdminClient();
+  const { data: inviteData, error: inviteError } = await authAdmin.auth.admin.inviteUserByEmail(
+    email,
+    { redirectTo: `${appUrl}/auth/callback?next=/en` }
+  );
+  if (inviteError) return { error: inviteError.message };
+
+  const userId = inviteData.user.id;
+
+  // Pre-create their profile with the assigned role so it's ready on first login
+  const dbAdmin = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: profileError } = await (dbAdmin as any)
+    .from("user_profiles")
+    .upsert({
+      id:                 userId,
+      email,
+      full_name:          email.split("@")[0],
+      role:               role as Role,
+      assigned_campus_id: campusId,
+    });
+  if (profileError) return { error: (profileError as { message: string }).message };
+
+  if (campusId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (dbAdmin as any)
+      .from("user_campus_assignments")
+      .upsert({ user_id: userId, campus_id: campusId });
+  }
+
+  revalidatePath("/en/admin");
+  revalidatePath("/zh-TW/admin");
+  return { ok: true, email };
+}

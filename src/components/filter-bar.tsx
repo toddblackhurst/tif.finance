@@ -28,7 +28,8 @@ export function FilterBar({ campuses, showStatus = false }: FilterBarProps) {
     const params = new URLSearchParams(sp.toString());
     if (val) params.set(key, val);
     else params.delete(key);
-    router.push(`${pathname}?${params.toString()}`);
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
   }
 
   const campus = sp.get("campus") ?? "";
