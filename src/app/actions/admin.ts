@@ -97,7 +97,7 @@ export async function sendInvitation(prevState: unknown, formData: FormData) {
   const authAdmin = makeAuthAdminClient();
   const { data: inviteData, error: inviteError } = await authAdmin.auth.admin.inviteUserByEmail(
     email,
-    { redirectTo: `${appUrl}/auth/callback?next=/en` }
+    { redirectTo: `${appUrl}/auth/callback` }
   );
   if (inviteError) return { error: inviteError.message };
 
@@ -119,9 +119,10 @@ export async function sendInvitation(prevState: unknown, formData: FormData) {
 
   if (campusId) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (dbAdmin as any)
+    const { error: campusErr } = await (dbAdmin as any)
       .from("user_campus_assignments")
       .upsert({ user_id: userId, campus_id: campusId });
+    if (campusErr) return { error: (campusErr as { message: string }).message };
   }
 
   revalidatePath("/en/admin");

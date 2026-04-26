@@ -158,9 +158,8 @@ export interface Database {
         Row: {
           user_id: string;
           campus_id: string;
-          created_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["user_campus_assignments"]["Row"], "created_at">;
+        Insert: Database["public"]["Tables"]["user_campus_assignments"]["Row"];
         Update: Partial<Database["public"]["Tables"]["user_campus_assignments"]["Insert"]>;
       };
       bank_import_lines: {
