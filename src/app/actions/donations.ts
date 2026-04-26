@@ -80,6 +80,12 @@ export async function updateDonation(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
+  const { data: profile } = await supabase
+    .from("user_profiles").select("role").eq("id", user.id).single();
+  const role = (profile as { role: string } | null)?.role ?? "viewer";
+  if (role !== "admin" && role !== "campus-finance")
+    return { error: "Not authorized to edit donations." };
+
   const giftDate = formData.get("gift_date") as string;
   const donorId = (formData.get("donor_id") as string) || null;
   const amount = Number(formData.get("amount"));
@@ -121,6 +127,12 @@ export async function updateDonor(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
+
+  const { data: profile } = await supabase
+    .from("user_profiles").select("role").eq("id", user.id).single();
+  const role = (profile as { role: string } | null)?.role ?? "viewer";
+  if (role !== "admin" && role !== "campus-finance")
+    return { error: "Not authorized to edit donors." };
 
   const displayName = (formData.get("display_name") as string)?.trim();
   const email = (formData.get("email") as string)?.trim() || null;

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -15,6 +15,14 @@ export default async function EditDonationPage({
   const { locale, id } = await params;
   const t = await getTranslations("donations");
   const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect(`/${locale}/login`);
+
+  const { data: profileData } = await supabase
+    .from("user_profiles").select("role").eq("id", user.id).single();
+  const role = (profileData as { role: string } | null)?.role ?? "viewer";
+  if (role !== "admin" && role !== "campus-finance") redirect(`/${locale}/donations`);
 
   const [{ data: rawDonation }, { data: campusData }, { data: fundData }] = await Promise.all([
     supabase
