@@ -26,7 +26,7 @@ export default async function EditExpensePage({
   const [{ data: rawExpense }, { data: campusData }] = await Promise.all([
     supabase
       .from("expenses")
-      .select("id, description, category, expense_date, amount, campus_id, notes, status")
+      .select("id, description, category, expense_date, amount, campus_id, notes, status, payment_type, bank_code, bank_account_number")
       .eq("id", id)
       .is("deleted_at", null)
       .single(),
@@ -44,6 +44,9 @@ export default async function EditExpensePage({
     campus_id: string;
     notes: string | null;
     status: string;
+    payment_type: "reimbursement" | "petty_cash" | null;
+    bank_code: string | null;
+    bank_account_number: string | null;
   };
 
   const campuses = (campusData ?? []) as CampusRow[];
@@ -70,6 +73,9 @@ export default async function EditExpensePage({
             amount: expense.amount,
             campus_id: expense.campus_id,
             notes: expense.notes,
+            payment_type: expense.payment_type,
+            bank_code: expense.bank_code,
+            bank_account_number: expense.bank_account_number,
           }}
         />
       </div>

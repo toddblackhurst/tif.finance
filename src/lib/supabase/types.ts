@@ -117,6 +117,9 @@ export interface Database {
           reconciliation_ref: string | null;
           receipt_url: string | null;
           notes: string | null;
+          payment_type: "reimbursement" | "petty_cash" | null;
+          bank_code: string | null;
+          bank_account_number: string | null;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;

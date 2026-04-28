@@ -68,6 +68,16 @@
     "reject": "拒絕",
     "markPaid": "標記為已付款",
     "approvalNotes": "審核備註",
+    "paymentType": "此支出如何支付？",
+    "paymentTypes": {
+      "reimbursement": "需要補款 — 我自行墊付",
+      "petty_cash": "已從零用金支付 — 無需補款"
+    },
+    "bankInfo": "銀行轉帳資料",
+    "bankCode": "銀行代碼",
+    "bankAccountNumber": "帳號",
+    "bankCodePlaceholder": "例如：004",
+    "bankAccountPlaceholder": "例如：123456789012",
     "statuses": {
       "draft": "草稿",
       "submitted": "已提交",

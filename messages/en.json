@@ -68,6 +68,16 @@
     "reject": "Reject",
     "markPaid": "Mark as Paid",
     "approvalNotes": "Approval Notes",
+    "paymentType": "How was this expense paid?",
+    "paymentTypes": {
+      "reimbursement": "Needs reimbursement — I paid out of pocket",
+      "petty_cash": "Paid from petty cash — no reimbursement needed"
+    },
+    "bankInfo": "Bank Transfer Details",
+    "bankCode": "Bank Code",
+    "bankAccountNumber": "Account Number",
+    "bankCodePlaceholder": "e.g. 004",
+    "bankAccountPlaceholder": "e.g. 123456789012",
     "statuses": {
       "draft": "Draft",
       "submitted": "Submitted",

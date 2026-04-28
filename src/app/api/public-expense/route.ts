@@ -37,10 +37,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { name, email, campus_name, category, description, amount, expense_date, notes } = body as {
+  const {
+    name, email, campus_name, category, description, amount, expense_date, notes,
+    payment_type, bank_code, bank_account_number,
+  } = body as {
     name: string; email: string; campus_name: string;
     category: string; description: string;
     amount: string | number; expense_date: string; notes?: string;
+    payment_type?: string; bank_code?: string; bank_account_number?: string;
   };
 
   // Basic validation
@@ -56,6 +60,10 @@ export async function POST(req: NextRequest) {
   if (!amountNum || amountNum <= 0 || !isFinite(amountNum))
     return NextResponse.json({ error: "Amount must be a positive number" }, { status: 422 });
   if (!expense_date) return NextResponse.json({ error: "Expense date is required" }, { status: 422 });
+  if (!payment_type || !["reimbursement", "petty_cash"].includes(payment_type))
+    return NextResponse.json({ error: "payment_type must be 'reimbursement' or 'petty_cash'" }, { status: 422 });
+  if (payment_type === "reimbursement" && (!bank_code?.trim() || !bank_account_number?.trim()))
+    return NextResponse.json({ error: "bank_code and bank_account_number are required for reimbursements" }, { status: 422 });
 
   // Look up campus_id
   const campus = await fetchOne<{ id: string; name: string }>(
@@ -76,8 +84,11 @@ export async function POST(req: NextRequest) {
     description:     descriptionStr,
     amount:          amountNum,
     expense_date,
-    notes:           notes ? String(notes).trim() : null,
-    status:          "submitted",
+    notes:               notes ? String(notes).trim() : null,
+    status:              "submitted",
+    payment_type:        payment_type ?? null,
+    bank_code:           payment_type === "reimbursement" ? (bank_code?.trim() ?? null) : null,
+    bank_account_number: payment_type === "reimbursement" ? (bank_account_number?.trim() ?? null) : null,
   };
 
   const insertRes = await fetch(sbUrl("expenses"), {

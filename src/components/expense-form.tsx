@@ -2,6 +2,7 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { createExpense, updateExpense, type ExpenseFormState } from "@/app/actions/expenses";
 
 interface Campus { id: string; name: string }
+
+type PaymentType = "reimbursement" | "petty_cash";
 
 interface ExpenseFormProps {
   locale: string;
@@ -21,6 +24,9 @@ interface ExpenseFormProps {
     amount: number;
     campus_id: string;
     notes?: string | null;
+    payment_type?: PaymentType | null;
+    bank_code?: string | null;
+    bank_account_number?: string | null;
   };
 }
 
@@ -64,6 +70,10 @@ export function ExpenseForm({ locale, campuses, editId, initialValues }: Expense
     ? updateExpense.bind(null, locale, editId)
     : createExpense.bind(null, locale);
   const [state, formAction] = useFormState(action, INITIAL_STATE);
+
+  const [paymentType, setPaymentType] = useState<PaymentType>(
+    initialValues?.payment_type ?? "reimbursement"
+  );
 
   return (
     <form action={formAction} className="space-y-6 max-w-2xl">
@@ -127,6 +137,66 @@ export function ExpenseForm({ locale, campuses, editId, initialValues }: Expense
           {campuses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
+
+      {/* ── Payment type ───────────────────────────────────────────────── */}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-gray-700">
+          {t("paymentType")} <span className="text-red-500">*</span>
+        </legend>
+        <input type="hidden" name="payment_type" value={paymentType} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {(["reimbursement", "petty_cash"] as const).map((pt) => (
+            <button
+              key={pt}
+              type="button"
+              onClick={() => setPaymentType(pt)}
+              className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                paymentType === pt
+                  ? "border-blue-500 bg-blue-50 text-blue-900"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                paymentType === pt ? "border-blue-500 bg-blue-500" : "border-gray-300"
+              }`}>
+                {paymentType === pt && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                )}
+              </span>
+              <span>{t(`paymentTypes.${pt}`)}</span>
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      {/* ── Bank details (reimbursement only) ─────────────────────────── */}
+      {paymentType === "reimbursement" && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-4">
+          <p className="text-sm font-medium text-amber-800">{t("bankInfo")}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="bank_code">{t("bankCode")} *</Label>
+              <Input
+                id="bank_code" name="bank_code"
+                required={paymentType === "reimbursement"}
+                placeholder={t("bankCodePlaceholder")}
+                maxLength={10}
+                defaultValue={initialValues?.bank_code ?? ""}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="bank_account_number">{t("bankAccountNumber")} *</Label>
+              <Input
+                id="bank_account_number" name="bank_account_number"
+                required={paymentType === "reimbursement"}
+                placeholder={t("bankAccountPlaceholder")}
+                maxLength={20}
+                defaultValue={initialValues?.bank_account_number ?? ""}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <Label htmlFor="notes">{t("notes")}</Label>

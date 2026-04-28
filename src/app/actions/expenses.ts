@@ -128,17 +128,29 @@ export async function updateExpense(
   const amount = Number(formData.get("amount"));
   const campusId = formData.get("campus_id") as string;
   const notes = (formData.get("notes") as string) || null;
+  const paymentType = (formData.get("payment_type") as string) || null;
+  const bankCode = (formData.get("bank_code") as string) || null;
+  const bankAccountNumber = (formData.get("bank_account_number") as string) || null;
 
   if (!description || !category || !expenseDate || !amount || !campusId)
     return { error: "Please fill in all required fields." };
   if (amount <= 0) return { error: "Amount must be greater than zero." };
   if (!EXPENSE_CATEGORIES.includes(category as typeof EXPENSE_CATEGORIES[number]))
     return { error: "Invalid category." };
+  if (!paymentType || !["reimbursement", "petty_cash"].includes(paymentType))
+    return { error: "Please indicate whether this is a reimbursement or was paid from petty cash." };
+  if (paymentType === "reimbursement" && (!bankCode || !bankAccountNumber))
+    return { error: "Please provide your bank code and account number for reimbursement." };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
     .from("expenses")
-    .update({ description, category, expense_date: expenseDate, amount, campus_id: campusId, notes })
+    .update({
+      description, category, expense_date: expenseDate, amount, campus_id: campusId, notes,
+      payment_type: paymentType,
+      bank_code: paymentType === "reimbursement" ? bankCode : null,
+      bank_account_number: paymentType === "reimbursement" ? bankAccountNumber : null,
+    })
     .eq("id", expenseId)
     .is("deleted_at", null)
     .select("id");
@@ -179,6 +191,9 @@ export async function createExpense(
   const amount = Number(formData.get("amount"));
   const campusId = formData.get("campus_id") as string;
   const notes = (formData.get("notes") as string) || null;
+  const paymentType = (formData.get("payment_type") as string) || null;
+  const bankCode = (formData.get("bank_code") as string) || null;
+  const bankAccountNumber = (formData.get("bank_account_number") as string) || null;
 
   if (!description || !category || !expenseDate || !amount || !campusId) {
     return { error: "Please fill in all required fields." };
@@ -186,6 +201,12 @@ export async function createExpense(
   if (amount <= 0) return { error: "Amount must be greater than zero." };
   if (!EXPENSE_CATEGORIES.includes(category as typeof EXPENSE_CATEGORIES[number])) {
     return { error: "Invalid category." };
+  }
+  if (!paymentType || !["reimbursement", "petty_cash"].includes(paymentType)) {
+    return { error: "Please indicate whether this is a reimbursement or was paid from petty cash." };
+  }
+  if (paymentType === "reimbursement" && (!bankCode || !bankAccountNumber)) {
+    return { error: "Please provide your bank code and account number for reimbursement." };
   }
 
   const submitAction = formData.get("_action") as string;
@@ -200,6 +221,9 @@ export async function createExpense(
       expense_date: expenseDate,
       amount, campus_id: campusId,
       notes, status,
+      payment_type: paymentType,
+      bank_code: paymentType === "reimbursement" ? bankCode : null,
+      bank_account_number: paymentType === "reimbursement" ? bankAccountNumber : null,
     })
     .select("id")
     .single() as { data: { id: string } | null; error: { message: string } | null };

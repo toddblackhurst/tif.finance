@@ -18,6 +18,9 @@ interface ExpenseDetail {
   submitter_id: string | null;
   submitter_name: string | null;
   submitter_email: string | null;
+  payment_type: "reimbursement" | "petty_cash" | null;
+  bank_code: string | null;
+  bank_account_number: string | null;
   campuses: { name: string } | null;
   funds: { name: string } | null;
   submitter: { full_name: string | null; email: string | null } | null;
@@ -57,6 +60,7 @@ export default async function ExpenseDetailPage({
       id, description, category, expense_date, amount, status,
       notes, approval_notes, approved_at, paid_at,
       submitter_id, submitter_name, submitter_email,
+      payment_type, bank_code, bank_account_number,
       campuses ( name ),
       funds ( name ),
       submitter:user_profiles!expenses_submitter_id_fkey ( full_name, email ),
@@ -141,7 +145,35 @@ export default async function ExpenseDetailPage({
               </p>
             </div>
           )}
+          {expense.payment_type && (
+            <div className="col-span-2">
+              <p className="text-gray-500">{t("paymentType")}</p>
+              <p className={`font-medium ${expense.payment_type === "reimbursement" ? "text-amber-700" : "text-green-700"}`}>
+                {t(`paymentTypes.${expense.payment_type}`)}
+              </p>
+            </div>
+          )}
         </div>
+
+        {expense.payment_type === "reimbursement" && (expense.bank_code || expense.bank_account_number) && (
+          <div className="px-6 py-4 text-sm bg-amber-50">
+            <p className="text-amber-800 font-medium mb-2">{t("bankInfo")}</p>
+            <div className="grid grid-cols-2 gap-4">
+              {expense.bank_code && (
+                <div>
+                  <p className="text-gray-500">{t("bankCode")}</p>
+                  <p className="font-mono font-medium">{expense.bank_code}</p>
+                </div>
+              )}
+              {expense.bank_account_number && (
+                <div>
+                  <p className="text-gray-500">{t("bankAccountNumber")}</p>
+                  <p className="font-mono font-medium">{expense.bank_account_number}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {expense.notes && (
           <div className="px-6 py-4 text-sm">
