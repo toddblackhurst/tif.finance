@@ -86,18 +86,12 @@ export async function GET(req: NextRequest) {
       }[] | null
     };
 
-  // ── Get all admin emails ──────────────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: admins } = await (db as any)
-    .from("user_profiles")
-    .select("email")
-    .eq("role", "admin")
-    .not("email", "is", null) as { data: { email: string }[] | null };
-
-  const adminEmails = (admins ?? []).map((a) => a.email).filter(Boolean);
-  if (!adminEmails.length) {
-    return NextResponse.json({ skipped: "No admin emails found" });
+  // ── Recipient — set DAILY_SUMMARY_EMAIL in Vercel env vars ──────────────
+  const summaryEmail = process.env.DAILY_SUMMARY_EMAIL?.trim();
+  if (!summaryEmail) {
+    return NextResponse.json({ skipped: "DAILY_SUMMARY_EMAIL not configured" });
   }
+  const adminEmails = [summaryEmail];
 
   const donationList  = donations  ?? [];
   const expenseList   = expenses   ?? [];

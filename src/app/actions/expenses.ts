@@ -61,15 +61,9 @@ async function getApproverEmailsForCampus(
   return (admins ?? []).map((a) => a.email).filter(Boolean);
 }
 
-async function getTreasurerEmails(
-  supabase: Awaited<ReturnType<typeof createClient>>
-): Promise<string[]> {
-  const { data } = await supabase
-    .from("user_profiles")
-    .select("email")
-    .eq("role", "admin")
-    .not("email", "is", null);
-  return ((data ?? []) as { email: string }[]).map((u) => u.email).filter(Boolean);
+async function getTreasurerEmails(): Promise<string[]> {
+  const email = process.env.TREASURER_EMAIL?.trim();
+  return email ? [email] : [];
 }
 
 async function getExpenseWithPeople(
@@ -356,7 +350,7 @@ export async function approveExpense(
   try {
     const [expData, treasurerEmails] = await Promise.all([
       getExpenseWithPeople(supabase, expenseId),
-      getTreasurerEmails(supabase),
+      getTreasurerEmails(),
     ]);
     if (expData) {
       const { name: submitterName, email: submitterEmail } = resolveSubmitter(expData);
