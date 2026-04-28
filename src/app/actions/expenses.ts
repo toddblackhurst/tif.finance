@@ -28,32 +28,37 @@ const EXPENSE_CATEGORIES = [
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-// Returns emails of campus-finance users assigned to the given campus + all admins.
+// Returns emails for expense approval notifications for a given campus.
+// Prefers campus-finance users assigned to that campus; falls back to all
+// admins only when no campus-finance user is assigned.
 async function getApproverEmailsForCampus(
   supabase: Awaited<ReturnType<typeof createClient>>,
   campusId: string
 ): Promise<string[]> {
-  const emailSet = new Set<string>();
+  // Campus-finance users assigned to this specific campus
+  const { data: assignments } = await supabase
+    .from("user_campus_assignments")
+    .select("user_id, user_profiles!user_campus_assignments_user_id_fkey(email, role)")
+    .eq("campus_id", campusId) as unknown as {
+      data: { user_profiles: { email: string | null; role: string } | null }[] | null
+    };
 
+  const campusFinanceEmails = (assignments ?? [])
+    .filter((row) => row.user_profiles?.role === "campus-finance")
+    .map((row) => row.user_profiles?.email)
+    .filter((e): e is string => !!e);
+
+  // If campus-finance users are assigned, notify only them
+  if (campusFinanceEmails.length > 0) return campusFinanceEmails;
+
+  // Fallback: no campus-finance users assigned — notify all admins
   const { data: admins } = await supabase
     .from("user_profiles")
     .select("email")
     .eq("role", "admin")
     .not("email", "is", null) as { data: { email: string }[] | null };
-  for (const a of admins ?? []) if (a.email) emailSet.add(a.email);
 
-  const { data: assignments } = await supabase
-    .from("user_campus_assignments")
-    .select("user_id, user_profiles!user_campus_assignments_user_id_fkey(email)")
-    .eq("campus_id", campusId) as unknown as {
-      data: { user_profiles: { email: string | null } | null }[] | null
-    };
-  for (const row of assignments ?? []) {
-    const email = row.user_profiles?.email;
-    if (email) emailSet.add(email);
-  }
-
-  return Array.from(emailSet);
+  return (admins ?? []).map((a) => a.email).filter(Boolean);
 }
 
 async function getTreasurerEmails(
