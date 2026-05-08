@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface RecentDonation {
@@ -20,6 +21,11 @@ interface RecentExpense {
   campuses: { name: string } | null;
 }
 
+interface AuditRow {
+  entity_id: string;
+  after_snapshot: unknown;
+}
+
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-gray-100 text-gray-700",
   submitted: "bg-blue-100 text-blue-700",
@@ -37,10 +43,17 @@ export default async function DashboardPage({
   const t = await getTranslations("dashboard");
   const te = await getTranslations("expenses");
   const supabase = await createClient();
+  const admin = createAdminClient();
 
   const currentYear = new Date().getFullYear();
 
-  const [donationsResult, expensesResult, pendingResult, recentDonationsResult, recentExpensesResult] =
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profileData } = await supabase
+    .from("user_profiles").select("role").eq("id", user?.id ?? "").single();
+  const role = (profileData as { role: string } | null)?.role ?? "viewer";
+  const canReviewExpenses = role === "admin" || role === "campus-finance";
+
+  const [donationsResult, expensesResult, pendingResult, recentDonationsResult, recentExpensesResult, otherExpensesResult] =
     await Promise.all([
       supabase
         .from("donations")
@@ -69,6 +82,14 @@ export default async function DashboardPage({
         .is("deleted_at", null)
         .order("expense_date", { ascending: false })
         .limit(5),
+      canReviewExpenses
+        ? supabase
+            .from("expenses")
+            .select("id, amount")
+            .eq("category", "other")
+            .is("deleted_at", null)
+            .limit(500)
+        : Promise.resolve({ data: [] }),
     ]);
 
   const ytdDonations = ((donationsResult.data ?? []) as { amount: number }[]).reduce(
@@ -81,6 +102,29 @@ export default async function DashboardPage({
 
   const recentDonations = (recentDonationsResult.data ?? []) as unknown as RecentDonation[];
   const recentExpenses = (recentExpensesResult.data ?? []) as unknown as RecentExpense[];
+  const otherExpenses = (otherExpensesResult.data ?? []) as { id: string; amount: number }[];
+  const otherExpenseIds = otherExpenses.map((expense) => expense.id);
+  let keptOtherIds = new Set<string>();
+  if (otherExpenseIds.length > 0) {
+    const { data: auditRows } = await admin
+      .from("audit_log")
+      .select("entity_id, after_snapshot")
+      .eq("entity_type", "expense")
+      .eq("action", "update")
+      .in("entity_id", otherExpenseIds)
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    keptOtherIds = new Set(
+      ((auditRows ?? []) as unknown as AuditRow[])
+        .filter((row) => {
+          const snapshot = row.after_snapshot as { category_review_status?: string } | null;
+          return snapshot?.category_review_status === "kept_other";
+        })
+        .map((row) => row.entity_id)
+    );
+  }
+  const otherNeedsReview = otherExpenses.filter((expense) => !keptOtherIds.has(expense.id));
+  const otherNeedsReviewTotal = otherNeedsReview.reduce((sum, expense) => sum + (expense.amount ?? 0), 0);
 
   const fmt = (n: number) => `NT$${n.toLocaleString()}`;
 
@@ -89,7 +133,7 @@ export default async function DashboardPage({
       <h1 className="text-2xl font-bold">{t("title")} — {currentYear}</h1>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${canReviewExpenses ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">{t("ytdDonations")}</CardTitle>
@@ -121,6 +165,24 @@ export default async function DashboardPage({
             )}
           </CardContent>
         </Card>
+        {canReviewExpenses && (
+          <Card className={otherNeedsReview.length > 0 ? "border-amber-300 bg-amber-50" : ""}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">Other Review</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className={`text-2xl font-bold ${otherNeedsReview.length > 0 ? "text-amber-700" : ""}`}>
+                {otherNeedsReview.length}
+              </p>
+              <p className="text-xs text-gray-500">{fmt(otherNeedsReviewTotal)}</p>
+              {otherNeedsReview.length > 0 && (
+                <Link href={`/${locale}/expense-review`} className="text-xs text-blue-600 hover:underline">
+                  Review →
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

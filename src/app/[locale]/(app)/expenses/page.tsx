@@ -83,6 +83,14 @@ export default async function ExpensesPage({
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl font-bold">{t("title")}</h1>
         <div className="flex items-center gap-2">
+          {canSubmit && (
+            <Link
+              href={`/${locale}/expense-review`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 transition-colors"
+            >
+              Review Other
+            </Link>
+          )}
           <a
             href={`/api/export/expenses?year=${new Date().getFullYear()}`}
             className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"

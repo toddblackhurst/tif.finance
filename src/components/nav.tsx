@@ -7,13 +7,14 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
-  { href: "/",          key: "dashboard",  adminOnly: false },
-  { href: "/donations", key: "donations",  adminOnly: false },
-  { href: "/expenses",  key: "expenses",   adminOnly: false },
-  { href: "/donors",    key: "donors",     adminOnly: false },
-  { href: "/reports",   key: "reports",    adminOnly: false },
-  { href: "/bank",      key: "bank",       adminOnly: true  },
-  { href: "/admin",     key: "admin",      adminOnly: true  },
+  { href: "/",          key: "dashboard",  adminOnly: false, financeOnly: false },
+  { href: "/donations", key: "donations",  adminOnly: false, financeOnly: false },
+  { href: "/expenses",  key: "expenses",   adminOnly: false, financeOnly: false },
+  { href: "/expense-review", key: "expenseReview", adminOnly: false, financeOnly: true },
+  { href: "/donors",    key: "donors",     adminOnly: false, financeOnly: false },
+  { href: "/reports",   key: "reports",    adminOnly: false, financeOnly: false },
+  { href: "/bank",      key: "bank",       adminOnly: true, financeOnly: false },
+  { href: "/admin",     key: "admin",      adminOnly: true, financeOnly: false },
 ] as const;
 
 export function Nav({ locale, role }: { locale: string; role: string }) {
@@ -26,9 +27,10 @@ export function Nav({ locale, role }: { locale: string; role: string }) {
     window.location.href = `/${locale}/login`;
   }
 
+  const canReviewExpenses = role === "admin" || role === "campus-finance";
   const visibleLinks = role === "admin"
     ? NAV_LINKS
-    : NAV_LINKS.filter((l) => !l.adminOnly);
+    : NAV_LINKS.filter((l) => !l.adminOnly && (!l.financeOnly || canReviewExpenses));
 
   return (
     <nav className="flex flex-col h-full" style={{ backgroundColor: "#1b2327" }}>

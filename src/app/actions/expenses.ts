@@ -21,6 +21,8 @@ export interface ExpenseFormState {
   success?: boolean;
 }
 
+export type ExpenseCategoryReviewState = ExpenseFormState;
+
 const EXPENSE_CATEGORIES = [
   "ministry", "facilities", "staffing", "missions",
   "vbs", "worship", "admin", "other",
@@ -105,7 +107,143 @@ function resolveSubmitter(expData: Awaited<ReturnType<typeof getExpenseWithPeopl
   return { name, email };
 }
 
+async function requireExpenseReviewer(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+) {
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("role")
+    .eq("id", userId)
+    .single();
+  const role = (profile as { role: string } | null)?.role ?? "viewer";
+  return role === "admin" || role === "campus-finance";
+}
+
+async function getReviewableOtherExpense(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  expenseId: string
+) {
+  const { data, error } = await supabase
+    .from("expenses")
+    .select("id, description, amount, category, campus_id, expense_date, notes")
+    .eq("id", expenseId)
+    .is("deleted_at", null)
+    .single();
+
+  if (error || !data) return null;
+  return data as {
+    id: string;
+    description: string;
+    amount: number;
+    category: string;
+    campus_id: string;
+    expense_date: string;
+    notes: string | null;
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
+
+export async function reclassifyOtherExpense(
+  locale: string,
+  expenseId: string,
+  _prev: ExpenseCategoryReviewState,
+  formData: FormData
+): Promise<ExpenseCategoryReviewState> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+  if (!(await requireExpenseReviewer(supabase, user.id))) {
+    return { error: "Not authorized to review expense categories." };
+  }
+
+  const category = String(formData.get("category") || "");
+  const reviewNote = String(formData.get("review_note") || "").trim() || null;
+
+  if (!EXPENSE_CATEGORIES.includes(category as typeof EXPENSE_CATEGORIES[number]) || category === "other") {
+    return { error: "Choose a category other than Other." };
+  }
+
+  const expense = await getReviewableOtherExpense(supabase, expenseId);
+  if (!expense) return { error: "Expense not found or not available to you." };
+  if (expense.category !== "other") return { error: "This expense is no longer categorized as Other." };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: updated, error } = await (supabase as any)
+    .from("expenses")
+    .update({ category })
+    .eq("id", expenseId)
+    .eq("category", "other")
+    .is("deleted_at", null)
+    .select("id") as { data: { id: string }[] | null; error: { message: string } | null };
+
+  if (error) return { error: error.message };
+  if (!updated || updated.length === 0) return { error: "Expense not found or already reviewed." };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any).from("audit_log").insert({
+    entity_type: "expense",
+    entity_id: expenseId,
+    action: "update",
+    actor_id: user.id,
+    before_snapshot: { category: "other" },
+    after_snapshot: {
+      category,
+      category_review_status: "reclassified",
+      category_review_note: reviewNote,
+    },
+    change_summary: `Expense category reviewed: Other → ${category}`,
+  });
+
+  revalidatePath(`/${locale}`);
+  revalidatePath(`/${locale}/expenses`);
+  revalidatePath(`/${locale}/expenses/${expenseId}`);
+  revalidatePath(`/${locale}/expense-review`);
+  return { success: true };
+}
+
+export async function keepOtherExpense(
+  locale: string,
+  expenseId: string,
+  _prev: ExpenseCategoryReviewState,
+  formData: FormData
+): Promise<ExpenseCategoryReviewState> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+  if (!(await requireExpenseReviewer(supabase, user.id))) {
+    return { error: "Not authorized to review expense categories." };
+  }
+
+  const reviewNote = String(formData.get("review_note") || "").trim() || null;
+  const expense = await getReviewableOtherExpense(supabase, expenseId);
+  if (!expense) return { error: "Expense not found or not available to you." };
+  if (expense.category !== "other") return { error: "This expense is no longer categorized as Other." };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from("audit_log").insert({
+    entity_type: "expense",
+    entity_id: expenseId,
+    action: "update",
+    actor_id: user.id,
+    before_snapshot: { category: "other" },
+    after_snapshot: {
+      category: "other",
+      category_review_status: "kept_other",
+      category_review_note: reviewNote,
+    },
+    change_summary: "Expense category reviewed and left as Other",
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/${locale}`);
+  revalidatePath(`/${locale}/expenses`);
+  revalidatePath(`/${locale}/expenses/${expenseId}`);
+  revalidatePath(`/${locale}/expense-review`);
+  return { success: true };
+}
 
 export async function updateExpense(
   locale: string,
