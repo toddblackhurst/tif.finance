@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { ExpenseForm } from "@/components/expense-form";
+import { ExpenseForm, type BankAccountOption } from "@/components/expense-form";
 
 interface CampusRow { id: string; name: string }
 
@@ -26,7 +26,7 @@ export default async function EditExpensePage({
   const [{ data: rawExpense }, { data: campusData }] = await Promise.all([
     supabase
       .from("expenses")
-      .select("id, description, category, expense_date, amount, campus_id, notes, status, payment_type, bank_code, bank_account_number")
+      .select("id, description, category, expense_date, amount, campus_id, notes, status, submitter_id, submitter_email, payment_type, bank_code, bank_account_number")
       .eq("id", id)
       .is("deleted_at", null)
       .single(),
@@ -44,12 +44,40 @@ export default async function EditExpensePage({
     campus_id: string;
     notes: string | null;
     status: string;
+    submitter_id: string | null;
+    submitter_email: string | null;
     payment_type: "reimbursement" | "petty_cash" | null;
     bank_code: string | null;
     bank_account_number: string | null;
   };
 
   const campuses = (campusData ?? []) as CampusRow[];
+  let accountQuery = supabase
+    .from("expenses")
+    .select("bank_code, bank_account_number")
+    .eq("payment_type", "reimbursement")
+    .not("bank_code", "is", null)
+    .not("bank_account_number", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (expense.submitter_id) {
+    accountQuery = accountQuery.eq("submitter_id", expense.submitter_id);
+  } else if (expense.submitter_email) {
+    accountQuery = accountQuery.eq("submitter_email", expense.submitter_email);
+  } else {
+    accountQuery = accountQuery.eq("id", id);
+  }
+
+  const { data: accountRows } = await accountQuery;
+  const seenAccounts = new Set<string>();
+  const bankAccountOptions = ((accountRows ?? []) as BankAccountOption[])
+    .filter((option) => {
+      const key = `${option.bank_code}|||${option.bank_account_number}`;
+      if (seenAccounts.has(key)) return false;
+      seenAccounts.add(key);
+      return true;
+    });
 
   return (
     <div className="space-y-6">
@@ -65,6 +93,7 @@ export default async function EditExpensePage({
         <ExpenseForm
           locale={locale}
           campuses={campuses}
+          bankAccountOptions={bankAccountOptions}
           editId={id}
           initialValues={{
             description: expense.description,

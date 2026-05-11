@@ -35,7 +35,8 @@ export function FilterBar({ campuses, showStatus = false }: FilterBarProps) {
   const campus = sp.get("campus") ?? "";
   const month = sp.get("month") ?? "";
   const status = sp.get("status") ?? "";
-  const hasFilter = !!(campus || month || status);
+  const method = sp.get("method") ?? "";
+  const hasFilter = !!(campus || month || status || method);
 
   return (
     <div className="flex flex-wrap items-center gap-2">

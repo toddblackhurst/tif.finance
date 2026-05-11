@@ -64,8 +64,16 @@ async function getApproverEmailsForCampus(
 }
 
 async function getTreasurerEmails(): Promise<string[]> {
-  const email = process.env.TREASURER_EMAIL?.trim();
-  return email ? [email] : [];
+  const recipients = [
+    process.env.TREASURER_EMAIL,
+    process.env.PAYMENT_NOTIFICATION_EMAILS,
+  ]
+    .filter((value): value is string => !!value)
+    .flatMap((value) => value.split(","))
+    .map((email) => email.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(recipients));
 }
 
 async function getExpenseWithPeople(

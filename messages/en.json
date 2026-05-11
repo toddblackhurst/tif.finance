@@ -9,7 +9,8 @@
     "cardReconciliation": "Card Reconciliation",
     "admin": "Admin",
     "signOut": "Sign Out",
-    "bank": "Bank Reconciliation"
+    "bank": "Bank Reconciliation",
+    "bankTransactions": "Bank Transactions"
   },
   "login": {
     "title": "TIF Finance",
@@ -76,6 +77,8 @@
       "petty_cash": "Paid from petty cash — no reimbursement needed"
     },
     "bankInfo": "Bank Transfer Details",
+    "savedBankAccount": "Recipient Account",
+    "enterNewBankAccount": "Enter a new account",
     "bankCode": "Bank Code",
     "bankAccountNumber": "Account Number",
     "bankCodePlaceholder": "e.g. 004",

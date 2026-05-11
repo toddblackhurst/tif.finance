@@ -13,9 +13,15 @@ interface Campus { id: string; name: string }
 
 type PaymentType = "reimbursement" | "petty_cash";
 
+export interface BankAccountOption {
+  bank_code: string;
+  bank_account_number: string;
+}
+
 interface ExpenseFormProps {
   locale: string;
   campuses: Campus[];
+  bankAccountOptions?: BankAccountOption[];
   editId?: string;
   initialValues?: {
     description: string;
@@ -64,7 +70,11 @@ function Buttons({ draftLabel, submitLabel, cancelHref, editMode }: {
   );
 }
 
-export function ExpenseForm({ locale, campuses, editId, initialValues }: ExpenseFormProps) {
+function accountOptionValue(option: BankAccountOption) {
+  return `${option.bank_code}|||${option.bank_account_number}`;
+}
+
+export function ExpenseForm({ locale, campuses, bankAccountOptions = [], editId, initialValues }: ExpenseFormProps) {
   const t = useTranslations("expenses");
   const action = editId
     ? updateExpense.bind(null, locale, editId)
@@ -73,6 +83,11 @@ export function ExpenseForm({ locale, campuses, editId, initialValues }: Expense
 
   const [paymentType, setPaymentType] = useState<PaymentType>(
     initialValues?.payment_type ?? "reimbursement"
+  );
+  const [bankCode, setBankCode] = useState(initialValues?.bank_code ?? "");
+  const [bankAccountNumber, setBankAccountNumber] = useState(initialValues?.bank_account_number ?? "");
+  const selectedAccount = bankAccountOptions.find(
+    (option) => option.bank_code === bankCode && option.bank_account_number === bankAccountNumber
   );
 
   return (
@@ -173,6 +188,29 @@ export function ExpenseForm({ locale, campuses, editId, initialValues }: Expense
       {paymentType === "reimbursement" && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-4">
           <p className="text-sm font-medium text-amber-800">{t("bankInfo")}</p>
+          {bankAccountOptions.length > 0 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="saved_bank_account">{t("savedBankAccount")}</Label>
+              <select
+                id="saved_bank_account"
+                value={selectedAccount ? accountOptionValue(selectedAccount) : ""}
+                onChange={(event) => {
+                  const option = bankAccountOptions.find((item) => accountOptionValue(item) === event.target.value);
+                  if (!option) return;
+                  setBankCode(option.bank_code);
+                  setBankAccountNumber(option.bank_account_number);
+                }}
+                className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">{t("enterNewBankAccount")}</option>
+                {bankAccountOptions.map((option) => (
+                  <option key={accountOptionValue(option)} value={accountOptionValue(option)}>
+                    {option.bank_code} · {option.bank_account_number}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="bank_code">{t("bankCode")} *</Label>
@@ -181,7 +219,8 @@ export function ExpenseForm({ locale, campuses, editId, initialValues }: Expense
                 required={paymentType === "reimbursement"}
                 placeholder={t("bankCodePlaceholder")}
                 maxLength={10}
-                defaultValue={initialValues?.bank_code ?? ""}
+                value={bankCode}
+                onChange={(event) => setBankCode(event.target.value)}
               />
             </div>
             <div className="space-y-1.5">
@@ -191,7 +230,8 @@ export function ExpenseForm({ locale, campuses, editId, initialValues }: Expense
                 required={paymentType === "reimbursement"}
                 placeholder={t("bankAccountPlaceholder")}
                 maxLength={20}
-                defaultValue={initialValues?.bank_account_number ?? ""}
+                value={bankAccountNumber}
+                onChange={(event) => setBankAccountNumber(event.target.value)}
               />
             </div>
           </div>

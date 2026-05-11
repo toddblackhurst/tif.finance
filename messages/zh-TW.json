@@ -9,7 +9,8 @@
     "cardReconciliation": "刷卡對帳",
     "admin": "管理",
     "signOut": "登出",
-    "bank": "銀行對帳"
+    "bank": "銀行對帳",
+    "bankTransactions": "銀行交易"
   },
   "login": {
     "title": "TIF 財務系統",
@@ -76,6 +77,8 @@
       "petty_cash": "已從零用金支付 — 無需補款"
     },
     "bankInfo": "銀行轉帳資料",
+    "savedBankAccount": "收款帳號",
+    "enterNewBankAccount": "輸入新帳號",
     "bankCode": "銀行代碼",
     "bankAccountNumber": "帳號",
     "bankCodePlaceholder": "例如：004",

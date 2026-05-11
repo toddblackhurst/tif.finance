@@ -14,7 +14,7 @@ const NAV_LINKS = [
   { href: "/donors",    key: "donors",     adminOnly: false, financeOnly: false },
   { href: "/reports",   key: "reports",    adminOnly: false, financeOnly: false },
   { href: "/card-reconciliation", key: "cardReconciliation", adminOnly: true, financeOnly: false },
-  { href: "/bank",      key: "bank",       adminOnly: true, financeOnly: false },
+  { href: "/bank",      key: "bankTransactions", adminOnly: true, financeOnly: false },
   { href: "/admin",     key: "admin",      adminOnly: true, financeOnly: false },
 ] as const;
 

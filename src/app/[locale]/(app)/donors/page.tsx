@@ -31,6 +31,15 @@ interface PeriodRow {
   last_gift_date: string | null;
 }
 
+const PAYMENT_METHODS = [
+  { value: "", label: "All Methods" },
+  { value: "bank_transfer", label: "Bank Transfer" },
+  { value: "cash", label: "Cash" },
+  { value: "card", label: "Card" },
+  { value: "check", label: "Check" },
+  { value: "other", label: "Other" },
+] as const;
+
 function parseMonth(m: string): { start: string; end: string; label: string } {
   const [y, mo] = m.split("-").map(Number);
   const start = `${y}-${String(mo).padStart(2, "0")}-01`;
@@ -39,17 +48,27 @@ function parseMonth(m: string): { start: string; end: string; label: string } {
   return { start, end, label };
 }
 
+function methodHref(method: string, q?: string, campus?: string, month?: string) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (campus) params.set("campus", campus);
+  if (month) params.set("month", month);
+  if (method) params.set("method", method);
+  return `?${params.toString()}`;
+}
+
 export default async function DonorsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string; campus?: string; month?: string }>;
+  searchParams: Promise<{ q?: string; campus?: string; month?: string; method?: string }>;
 }) {
   const { locale } = await params;
-  const { q, campus: campusFilter, month: monthFilter } = await searchParams;
+  const { q, campus: campusFilter, month: monthFilter, method: rawMethodFilter } = await searchParams;
   const t = await getTranslations("donors");
   const supabase = await createClient();
+  const methodFilter = PAYMENT_METHODS.some((m) => m.value === rawMethodFilter) ? rawMethodFilter ?? "" : "";
 
   const { data: campusData } = await supabase.from("campuses").select("id, name").order("name");
   const campuses = (campusData ?? []) as CampusRow[];
@@ -57,23 +76,28 @@ export default async function DonorsPage({
   let periodLabel: string | null = null;
   let periodDonors: PeriodRow[] = [];
   let ytdDonors: StatRow[] = [];
-  const isMonthView = !!monthFilter;
+  const isMethodView = !!methodFilter;
+  const isMonthView = !!monthFilter || isMethodView;
 
-  if (monthFilter) {
-    // ── Month view: aggregate donations for the period, grouped by donor ────
-    const { start, end, label } = parseMonth(monthFilter);
-    periodLabel = label;
+  if (isMonthView) {
+    // ── Filtered view: aggregate donations for the period/method, grouped by donor ────
+    const thisYear = new Date().getFullYear();
+    const period = monthFilter
+      ? parseMonth(monthFilter)
+      : { start: `${thisYear}-01-01`, end: `${thisYear + 1}-01-01`, label: `${thisYear} YTD` };
+    periodLabel = period.label;
 
     let donQuery = supabase
       .from("donations")
       .select("donor_id, amount, gift_date")
-      .gte("gift_date", start)
-      .lt("gift_date", end)
+      .gte("gift_date", period.start)
+      .lt("gift_date", period.end)
       .is("deleted_at", null)
       .not("donor_id", "is", null)
       .limit(2000);
 
     if (campusFilter) donQuery = donQuery.eq("campus_id", campusFilter);
+    if (methodFilter) donQuery = donQuery.eq("payment_method", methodFilter);
 
     const { data: donRows } = await donQuery as {
       data: { donor_id: string | null; amount: number; gift_date: string }[] | null;
@@ -152,6 +176,7 @@ export default async function DonorsPage({
         <form method="GET" className="flex items-center gap-2">
           {campusFilter && <input type="hidden" name="campus" value={campusFilter} />}
           {monthFilter && <input type="hidden" name="month" value={monthFilter} />}
+          {methodFilter && <input type="hidden" name="method" value={methodFilter} />}
           <input
             name="q"
             defaultValue={q ?? ""}
@@ -161,9 +186,28 @@ export default async function DonorsPage({
         </form>
       </div>
 
+      <div className="flex flex-wrap gap-2 border-b border-gray-200">
+        {PAYMENT_METHODS.map((method) => (
+          <Link
+            key={method.value || "all"}
+            href={methodHref(method.value, q, campusFilter, monthFilter)}
+            className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
+              methodFilter === method.value
+                ? "border-blue-600 text-blue-700"
+                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+            }`}
+          >
+            {method.label}
+          </Link>
+        ))}
+      </div>
+
       {isMonthView && periodLabel && (
         <p className="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded px-3 py-2">
           Showing giving for <strong>{periodLabel}</strong>
+          {methodFilter && (
+            <> · {PAYMENT_METHODS.find((m) => m.value === methodFilter)?.label}</>
+          )}
           {campusFilter && campuses.find(c => c.id === campusFilter) && (
             <> · {campuses.find(c => c.id === campusFilter)!.name}</>
           )}
