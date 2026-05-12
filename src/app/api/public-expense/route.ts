@@ -121,11 +121,6 @@ export async function POST(req: NextRequest) {
       // Notify approvers
       if (expenseId) {
         const locale = "en";
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-        const approversRes = await fetch(
-          `${appUrl}/api/approvers-for-campus?campus_id=${campus.id}`,
-          { headers: { "x-internal-secret": process.env.INTERNAL_SECRET ?? "" } }
-        );
         // Approver lookup via the service role directly
         const assignmentsRes = await fetch(
           sbUrl(`user_campus_assignments?campus_id=eq.${campus.id}&select=user_profiles(email)&user_profiles.role=neq.viewer`),

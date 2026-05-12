@@ -5,9 +5,16 @@ import { Resend } from "resend";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.RESEND_FROM ?? "TIF Finance <onboarding@resend.dev>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://tif-finance.vercel.app";
+
+function getResend() {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY is not configured");
+  }
+  return new Resend(apiKey);
+}
 
 function esc(s: string | null | undefined) {
   return (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -263,7 +270,7 @@ export async function GET(req: NextRequest) {
     </div>
   `;
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to: adminEmails,
     subject: `[TIF Finance] Daily Summary — ${displayDate}`,

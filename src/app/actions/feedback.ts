@@ -3,9 +3,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM   = process.env.RESEND_FROM ?? "TIF Finance <onboarding@resend.dev>";
 const TO     = "todd.blackhurst@gmail.com";
+
+function getResend() {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY is not configured");
+  }
+  return new Resend(apiKey);
+}
 
 export async function submitFeedback(
   _prev: { error?: string; success?: boolean },
@@ -25,7 +32,7 @@ export async function submitFeedback(
     ? `[TIF Finance] Bug report from ${reporter}`
     : `[TIF Finance] Feature request from ${reporter}`;
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to:   TO,
     subject,
