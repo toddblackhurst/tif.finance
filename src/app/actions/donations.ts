@@ -25,6 +25,7 @@ export async function createDonation(
   const campusId = formData.get("campus_id") as string;
   const fundId = formData.get("fund_id") as string;
   const paymentMethod = formData.get("payment_method") as string;
+  const contactEmail = ((formData.get("contact_email") as string) || "").trim().toLowerCase() || null;
   const depositReference = (formData.get("deposit_reference") as string) || null;
   const notes = (formData.get("notes") as string) || null;
 
@@ -33,6 +34,9 @@ export async function createDonation(
   }
   if (amount <= 0) {
     return { error: "Amount must be greater than zero." };
+  }
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    return { error: "Enter a valid email address." };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,6 +49,7 @@ export async function createDonation(
       campus_id: campusId,
       fund_id: fundId,
       payment_method: paymentMethod,
+      contact_email: contactEmail,
       deposit_reference: depositReference,
       notes,
       entered_by_id: user.id,
@@ -62,7 +67,7 @@ export async function createDonation(
     entity_id: donation.id,
     action: "create",
     actor_id: user.id,
-    after_snapshot: { donor_id: donorId, amount, campus_id: campusId, fund_id: fundId },
+    after_snapshot: { donor_id: donorId, amount, campus_id: campusId, fund_id: fundId, contact_email: contactEmail },
     change_summary: `Donation of NT$${amount.toLocaleString()} entered`,
   });
 
@@ -92,17 +97,21 @@ export async function updateDonation(
   const campusId = formData.get("campus_id") as string;
   const fundId = formData.get("fund_id") as string;
   const paymentMethod = formData.get("payment_method") as string;
+  const contactEmail = ((formData.get("contact_email") as string) || "").trim().toLowerCase() || null;
   const depositReference = (formData.get("deposit_reference") as string) || null;
   const notes = (formData.get("notes") as string) || null;
 
   if (!giftDate || !amount || !campusId || !fundId || !paymentMethod)
     return { error: "Please fill in all required fields." };
   if (amount <= 0) return { error: "Amount must be greater than zero." };
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    return { error: "Enter a valid email address." };
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from("donations")
-    .update({ donor_id: donorId, gift_date: giftDate, amount, campus_id: campusId, fund_id: fundId, payment_method: paymentMethod, deposit_reference: depositReference, notes })
+    .update({ donor_id: donorId, gift_date: giftDate, amount, campus_id: campusId, fund_id: fundId, payment_method: paymentMethod, contact_email: contactEmail, deposit_reference: depositReference, notes })
     .eq("id", donationId);
 
   if (error) return { error: error.message };
@@ -110,7 +119,7 @@ export async function updateDonation(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("audit_log").insert({
     entity_type: "donation", entity_id: donationId, action: "update", actor_id: user.id,
-    after_snapshot: { donor_id: donorId, amount, campus_id: campusId, fund_id: fundId },
+    after_snapshot: { donor_id: donorId, amount, campus_id: campusId, fund_id: fundId, contact_email: contactEmail },
     change_summary: `Donation updated to NT$${amount.toLocaleString()}`,
   });
 

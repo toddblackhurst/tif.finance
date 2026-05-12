@@ -10,8 +10,9 @@ interface DonationRow {
   gift_date: string;
   amount: number;
   payment_method: string;
+  contact_email: string | null;
   notes: string | null;
-  donors: { display_name: string } | null;
+  donors: { display_name: string; email: string | null } | null;
   campuses: { name: string } | null;
   funds: { name: string } | null;
 }
@@ -43,8 +44,8 @@ export default async function DonationsPage({
   let query = supabase
     .from("donations")
     .select(`
-      id, gift_date, amount, payment_method, notes,
-      donors ( display_name ),
+      id, gift_date, amount, payment_method, contact_email, notes,
+      donors ( display_name, email ),
       campuses ( name ),
       funds ( name )
     `)
@@ -116,7 +117,12 @@ export default async function DonationsPage({
             {donations.map((d) => (
               <tr key={d.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">{d.gift_date}</td>
-                <td className="px-4 py-3">{d.donors?.display_name ?? "—"}</td>
+                <td className="px-4 py-3">
+                  <p>{d.donors?.display_name ?? "—"}</p>
+                  {(d.contact_email || d.donors?.email) && (
+                    <p className="mt-1 text-xs text-gray-400">{d.contact_email ?? d.donors?.email}</p>
+                  )}
+                </td>
                 <td className="px-4 py-3">{d.campuses?.name ?? "—"}</td>
                 <td className="px-4 py-3">{d.funds?.name ?? "—"}</td>
                 <td className="px-4 py-3 text-right font-mono">

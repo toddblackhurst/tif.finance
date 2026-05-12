@@ -29,7 +29,7 @@ export default async function EditDonationPage({
       .from("donations")
       .select(`
         id, gift_date, amount, campus_id, fund_id, payment_method,
-        deposit_reference, notes, donor_id,
+        contact_email, deposit_reference, notes, donor_id,
         donors ( display_name )
       `)
       .eq("id", id)
@@ -48,6 +48,7 @@ export default async function EditDonationPage({
     campus_id: string;
     fund_id: string;
     payment_method: string;
+    contact_email: string | null;
     deposit_reference: string | null;
     notes: string | null;
     donor_id: string | null;
@@ -79,6 +80,7 @@ export default async function EditDonationPage({
             campus_id: donation.campus_id,
             fund_id: donation.fund_id,
             payment_method: donation.payment_method,
+            contact_email: donation.contact_email,
             deposit_reference: donation.deposit_reference,
             notes: donation.notes,
             donor_id: donation.donor_id,

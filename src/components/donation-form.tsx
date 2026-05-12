@@ -23,6 +23,7 @@ interface DonationFormProps {
     campus_id: string;
     fund_id: string;
     payment_method: string;
+    contact_email?: string | null;
     deposit_reference?: string | null;
     notes?: string | null;
     donor_id?: string | null;
@@ -123,6 +124,18 @@ export function DonationForm({ locale, campuses, funds, editId, initialValues }:
             <option key={m} value={m}>{t(`paymentMethods.${m}`)}</option>
           ))}
         </select>
+      </div>
+
+      {/* Email Address */}
+      <div className="space-y-1.5">
+        <Label htmlFor="contact_email">{t("email")}</Label>
+        <Input
+          id="contact_email"
+          name="contact_email"
+          type="email"
+          autoComplete="email"
+          defaultValue={initialValues?.contact_email ?? ""}
+        />
       </div>
 
       {/* Deposit Reference */}

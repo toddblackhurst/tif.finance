@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("donations")
     .select(`
-      gift_date, amount, payment_method, deposit_reference, notes,
+      gift_date, amount, payment_method, contact_email, deposit_reference, notes,
       donors ( display_name, email ),
       campuses ( name ),
       funds ( name )
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
 
   type Row = {
     gift_date: string; amount: number; payment_method: string;
-    deposit_reference: string | null; notes: string | null;
+    contact_email: string | null; deposit_reference: string | null; notes: string | null;
     donors: { display_name: string; email: string } | null;
     campuses: { name: string } | null;
     funds: { name: string } | null;
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
   const rows = ((data ?? []) as unknown as Row[]).map((r) => ({
     "Date":             r.gift_date,
     "Donor":            r.donors?.display_name ?? "Anonymous",
-    "Email":            r.donors?.email ?? "",
+    "Email":            r.contact_email ?? r.donors?.email ?? "",
     "Amount (NT$)":     r.amount,
     "Campus":           r.campuses?.name ?? "",
     "Fund":             r.funds?.name ?? "",

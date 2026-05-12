@@ -83,6 +83,7 @@ export interface Database {
           campus_id: string;
           fund_id: string;
           payment_method: PaymentMethod;
+          contact_email: string | null;
           deposit_reference: string | null;
           pco_gift_id: string | null;
           receipt_url: string | null;

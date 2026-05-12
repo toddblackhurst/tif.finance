@@ -97,6 +97,7 @@ CREATE TABLE donations (
   fund_id             UUID NOT NULL REFERENCES funds(id),
   payment_method      VARCHAR(50) NOT NULL
                         CHECK (payment_method IN ('cash', 'card', 'bank_transfer', 'check', 'other')),
+  contact_email       VARCHAR(255),
   deposit_reference   VARCHAR(200),
   pco_gift_id         VARCHAR(100),
   receipt_url         TEXT,
