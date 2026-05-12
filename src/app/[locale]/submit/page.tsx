@@ -8,6 +8,9 @@ type LocaleLabels = {
   title: string; subtitle: string; name: string; email: string;
   campus: string; category: string; description: string; descHint: string;
   amount: string; date: string; notes: string; notesHint: string;
+  paymentType: string; reimbursement: string; pettyCash: string;
+  bankCode: string; bankAccountNumber: string; bankHint: string;
+  pettyCashHint: string;
   submit: string; submitting: string; successTitle: string; successMsg: string;
   submitAnother: string; selectCampus: string; selectCategory: string;
   categories: Record<string, string>;
@@ -28,6 +31,13 @@ const LABELS: Record<string, LocaleLabels> = {
     date:        "Expense Date",
     notes:       "Additional Notes",
     notesHint:   "Optional — receipts, context, or any other details",
+    paymentType: "Payment Type",
+    reimbursement: "Reimbursement",
+    pettyCash:   "Paid from petty cash",
+    bankCode:    "Bank Code",
+    bankAccountNumber: "Bank Account Number",
+    bankHint:    "Required for reimbursement by bank transfer",
+    pettyCashHint: "No bank details needed",
     submit:      "Submit Request",
     submitting:  "Submitting…",
     successTitle:"Request Submitted",
@@ -53,6 +63,9 @@ const LABELS: Record<string, LocaleLabels> = {
       description: "Description is required",
       amount:      "Please enter a valid amount",
       date:        "Date is required",
+      paymentType: "Please select a payment type",
+      bankCode:    "Bank code is required for reimbursements",
+      bankAccountNumber: "Bank account number is required for reimbursements",
       server:      "Something went wrong. Please try again.",
     },
   },
@@ -69,6 +82,13 @@ const LABELS: Record<string, LocaleLabels> = {
     date:        "費用日期",
     notes:       "備註",
     notesHint:   "選填 — 收據、背景說明或其他細節",
+    paymentType: "付款方式",
+    reimbursement: "請款匯款",
+    pettyCash:   "零用金已支付",
+    bankCode:    "銀行代碼",
+    bankAccountNumber: "銀行帳號",
+    bankHint:    "請款匯款時必填",
+    pettyCashHint: "不需要填寫銀行資料",
     submit:      "提交申請",
     submitting:  "提交中…",
     successTitle:"申請已送出",
@@ -94,6 +114,9 @@ const LABELS: Record<string, LocaleLabels> = {
       description: "說明為必填",
       amount:      "請輸入有效金額",
       date:        "日期為必填",
+      paymentType: "請選擇付款方式",
+      bankCode:    "請款匯款需填寫銀行代碼",
+      bankAccountNumber: "請款匯款需填寫銀行帳號",
       server:      "發生錯誤，請重試。",
     },
   },
@@ -110,6 +133,7 @@ export default function SubmitExpensePage() {
   const [form, setForm] = useState({
     name: "", email: "", campus_name: "", category: "",
     description: "", amount: "", expense_date: "", notes: "",
+    payment_type: "reimbursement", bank_code: "", bank_account_number: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
@@ -120,8 +144,21 @@ export default function SubmitExpensePage() {
   }, []);
 
   function set(field: string, value: string) {
-    setForm(f => ({ ...f, [field]: value }));
-    setErrors(e => { const n = { ...e }; delete n[field]; return n; });
+    setForm(f => {
+      if (field === "payment_type" && value === "petty_cash") {
+        return { ...f, payment_type: value, bank_code: "", bank_account_number: "" };
+      }
+      return { ...f, [field]: value };
+    });
+    setErrors(e => {
+      const n = { ...e };
+      delete n[field];
+      if (field === "payment_type") {
+        delete n.bank_code;
+        delete n.bank_account_number;
+      }
+      return n;
+    });
   }
 
   function validate() {
@@ -133,6 +170,11 @@ export default function SubmitExpensePage() {
     if (!form.description.trim()) errs.description = t.errors.description;
     if (!form.amount || Number(form.amount) <= 0) errs.amount = t.errors.amount;
     if (!form.expense_date)       errs.expense_date = t.errors.date;
+    if (!form.payment_type)       errs.payment_type = t.errors.paymentType;
+    if (form.payment_type === "reimbursement" && !form.bank_code.trim())
+      errs.bank_code = t.errors.bankCode;
+    if (form.payment_type === "reimbursement" && !form.bank_account_number.trim())
+      errs.bank_account_number = t.errors.bankAccountNumber;
     return errs;
   }
 
@@ -162,7 +204,11 @@ export default function SubmitExpensePage() {
   }
 
   function reset() {
-    setForm({ name: "", email: "", campus_name: "", category: "", description: "", amount: "", expense_date: "", notes: "" });
+    setForm({
+      name: "", email: "", campus_name: "", category: "",
+      description: "", amount: "", expense_date: "", notes: "",
+      payment_type: "reimbursement", bank_code: "", bank_account_number: "",
+    });
     setErrors({});
     setStatus("idle");
     setServerError("");
@@ -297,6 +343,73 @@ export default function SubmitExpensePage() {
               />
               {errors.expense_date && <p className="text-xs text-red-500 mt-1">{errors.expense_date}</p>}
             </div>
+          </div>
+
+          {/* Payment Type */}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t.paymentType} <span className="text-red-500">*</span></label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className={`rounded-lg border p-3 cursor-pointer transition ${form.payment_type === "reimbursement" ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-white"}`}>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="payment_type"
+                      value="reimbursement"
+                      checked={form.payment_type === "reimbursement"}
+                      onChange={e => set("payment_type", e.target.value)}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{t.reimbursement}</p>
+                      <p className="text-xs text-gray-500 mt-1">{t.bankHint}</p>
+                    </div>
+                  </div>
+                </label>
+                <label className={`rounded-lg border p-3 cursor-pointer transition ${form.payment_type === "petty_cash" ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-white"}`}>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="payment_type"
+                      value="petty_cash"
+                      checked={form.payment_type === "petty_cash"}
+                      onChange={e => set("payment_type", e.target.value)}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{t.pettyCash}</p>
+                      <p className="text-xs text-gray-500 mt-1">{t.pettyCashHint}</p>
+                    </div>
+                  </div>
+                </label>
+              </div>
+              {errors.payment_type && <p className="text-xs text-red-500 mt-1">{errors.payment_type}</p>}
+            </div>
+
+            {form.payment_type === "reimbursement" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.bankCode} <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={form.bank_code}
+                    onChange={e => set("bank_code", e.target.value)}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.bank_code ? "border-red-400" : "border-gray-300"}`}
+                  />
+                  {errors.bank_code && <p className="text-xs text-red-500 mt-1">{errors.bank_code}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.bankAccountNumber} <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={form.bank_account_number}
+                    onChange={e => set("bank_account_number", e.target.value)}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.bank_account_number ? "border-red-400" : "border-gray-300"}`}
+                  />
+                  {errors.bank_account_number && <p className="text-xs text-red-500 mt-1">{errors.bank_account_number}</p>}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Notes */}

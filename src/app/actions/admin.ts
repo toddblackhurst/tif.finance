@@ -48,14 +48,21 @@ export async function updateUserRole(userId: string, role: Role) {
 
 // ─── Update a user's campus assignment ───────────────────────────────────────
 export async function updateUserCampus(userId: string, campusId: string | null) {
+  return updateUserCampuses(userId, campusId ? [campusId] : []);
+}
+
+// ─── Update a user's campus assignments ──────────────────────────────────────
+export async function updateUserCampuses(userId: string, campusIds: string[]) {
   const { error, supabase } = await requireAdmin();
   if (error || !supabase) return { error };
+
+  const uniqueCampusIds = Array.from(new Set(campusIds.filter(Boolean)));
 
   // Keep the legacy FK in sync for display purposes
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any)
     .from("user_profiles")
-    .update({ assigned_campus_id: campusId || null })
+    .update({ assigned_campus_id: uniqueCampusIds[0] || null })
     .eq("id", userId);
 
   // Replace all junction-table rows for this user (RLS uses this table)
@@ -66,11 +73,11 @@ export async function updateUserCampus(userId: string, campusId: string | null) 
     .eq("user_id", userId);
   if (delErr) return { error: delErr.message };
 
-  if (campusId) {
+  if (uniqueCampusIds.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: insErr } = await (supabase as any)
       .from("user_campus_assignments")
-      .insert({ user_id: userId, campus_id: campusId });
+      .insert(uniqueCampusIds.map((campusId) => ({ user_id: userId, campus_id: campusId })));
     if (insErr) return { error: insErr.message };
   }
 

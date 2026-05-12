@@ -39,7 +39,7 @@ export default async function AdminPage({
     supabase.from("campuses").select("id, name").order("name"),
     supabase
       .from("user_campus_assignments")
-      .select("user_id, campuses(name)"),
+      .select("user_id, campus_id, campuses(name)"),
   ]);
 
   const users    = (usersResult.data    ?? []) as unknown as UserRow[];
@@ -47,11 +47,15 @@ export default async function AdminPage({
 
   // Build userId → campus name list from junction table
   const campusMap = new Map<string, string[]>();
-  for (const row of (assignmentsResult.data ?? []) as unknown as { user_id: string; campuses: { name: string } | null }[]) {
+  const campusIdMap = new Map<string, string[]>();
+  for (const row of (assignmentsResult.data ?? []) as unknown as { user_id: string; campus_id: string; campuses: { name: string } | null }[]) {
     if (!row.campuses?.name) continue;
     const list = campusMap.get(row.user_id) ?? [];
     list.push(row.campuses.name);
     campusMap.set(row.user_id, list);
+    const idList = campusIdMap.get(row.user_id) ?? [];
+    idList.push(row.campus_id);
+    campusIdMap.set(row.user_id, idList);
   }
 
   const roleCounts = users.reduce<Record<string, number>>((acc, u) => {
@@ -97,6 +101,7 @@ export default async function AdminPage({
                   user={u}
                   campuses={campuses}
                   assignedCampusNames={campusMap.get(u.id) ?? []}
+                  assignedCampusIds={campusIdMap.get(u.id) ?? []}
                   currentUserId={user.id}
                 />
               ))}

@@ -57,17 +57,31 @@ function methodHref(method: string, q?: string, campus?: string, month?: string)
   return `?${params.toString()}`;
 }
 
+function pageHref(page: number, q?: string, campus?: string, month?: string, method?: string) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (campus) params.set("campus", campus);
+  if (month) params.set("month", month);
+  if (method) params.set("method", method);
+  params.set("page", String(page));
+  return `?${params.toString()}`;
+}
+
 export default async function DonorsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string; campus?: string; month?: string; method?: string }>;
+  searchParams: Promise<{ q?: string; campus?: string; month?: string; method?: string; page?: string }>;
 }) {
   const { locale } = await params;
-  const { q, campus: campusFilter, month: monthFilter, method: rawMethodFilter } = await searchParams;
+  const { q, campus: campusFilter, month: monthFilter, method: rawMethodFilter, page } = await searchParams;
   const t = await getTranslations("donors");
   const supabase = await createClient();
+  const pageSize = 100;
+  const currentPage = Math.max(1, Number(page) || 1);
+  const from = (currentPage - 1) * pageSize;
+  const to = from + pageSize - 1;
   const methodFilter = PAYMENT_METHODS.some((m) => m.value === rawMethodFilter) ? rawMethodFilter ?? "" : "";
 
   const { data: campusData } = await supabase.from("campuses").select("id, name").order("name");
@@ -78,6 +92,7 @@ export default async function DonorsPage({
   let ytdDonors: StatRow[] = [];
   const isMethodView = !!methodFilter;
   const isMonthView = !!monthFilter || isMethodView;
+  let totalRows = 0;
 
   if (isMonthView) {
     // ── Filtered view: aggregate donations for the period/method, grouped by donor ────
@@ -126,7 +141,7 @@ export default async function DonorsPage({
       if (q?.trim()) donorQuery = donorQuery.or(`display_name.ilike.%${q}%,email.ilike.%${q}%`);
 
       const { data: donorRows } = await donorQuery;
-      periodDonors = ((donorRows ?? []) as {
+      const allPeriodDonors = ((donorRows ?? []) as {
         id: string; display_name: string; email: string | null;
         preferred_campus_id: string | null;
         campuses: { name: string } | null;
@@ -139,31 +154,37 @@ export default async function DonorsPage({
         gift_count: countMap[d.id] ?? 0,
         last_gift_date: lastDateMap[d.id] ?? null,
       })).sort((a, b) => b.period_amount - a.period_amount);
+      totalRows = allPeriodDonors.length;
+      periodDonors = allPeriodDonors.slice(from, to + 1);
     }
   } else {
     // ── YTD view: use donor_statistics view ───────────────────────────────
     let query = supabase
       .from("donor_statistics")
-      .select("*")
+      .select("*", { count: "exact" })
       .order("ytd_amount", { ascending: false })
-      .limit(200);
+      .range(from, to);
 
     if (campusFilter) query = query.eq("preferred_campus_id", campusFilter);
     if (q?.trim()) query = query.or(`display_name.ilike.%${q}%,email.ilike.%${q}%`);
 
-    const { data } = await query;
+    const { data, count } = await query;
     ytdDonors = (data ?? []) as StatRow[];
+    totalRows = count ?? ytdDonors.length;
   }
 
   const displayCount = isMonthView ? periodDonors.length : ytdDonors.length;
   const periodTotal = isMonthView ? periodDonors.reduce((s, d) => s + d.period_amount, 0) : 0;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  const firstVisible = totalRows === 0 ? 0 : from + 1;
+  const lastVisible = from + displayCount;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{t("title")}</h1>
         <span className="text-sm text-gray-500">
-          {displayCount} donor{displayCount !== 1 ? "s" : ""}
+          Showing {firstVisible}-{lastVisible} of {totalRows} donor{totalRows !== 1 ? "s" : ""}
           {isMonthView && periodTotal > 0 && ` · NT$${periodTotal.toLocaleString()}`}
         </span>
       </div>
@@ -279,6 +300,30 @@ export default async function DonorsPage({
           )}
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-500">Page {currentPage} of {totalPages}</span>
+          <div className="flex gap-2">
+            {currentPage > 1 && (
+              <Link
+                href={pageHref(currentPage - 1, q, campusFilter, monthFilter, methodFilter)}
+                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-gray-700 hover:bg-gray-50"
+              >
+                Previous
+              </Link>
+            )}
+            {currentPage < totalPages && (
+              <Link
+                href={pageHref(currentPage + 1, q, campusFilter, monthFilter, methodFilter)}
+                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-gray-700 hover:bg-gray-50"
+              >
+                Next
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

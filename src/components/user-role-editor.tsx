@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateUserRole, updateUserCampus } from "@/app/actions/admin";
+import { updateUserRole, updateUserCampuses } from "@/app/actions/admin";
 
 type Role = "admin" | "campus-finance" | "viewer";
 
@@ -31,16 +31,18 @@ export function UserRoleEditor({
   user,
   campuses,
   assignedCampusNames,
+  assignedCampusIds,
   currentUserId,
 }: {
   user: UserRow;
   campuses: Campus[];
   assignedCampusNames: string[];
+  assignedCampusIds: string[];
   currentUserId: string;
 }) {
   const [editing, setEditing]         = useState(false);
   const [role, setRole]               = useState(user.role as Role);
-  const [campusId, setCampusId]       = useState(user.assigned_campus_id ?? "");
+  const [campusIds, setCampusIds]     = useState<string[]>(assignedCampusIds);
   const [error, setError]             = useState<string | null>(null);
   const [isPending, startTransition]  = useTransition();
 
@@ -51,15 +53,23 @@ export function UserRoleEditor({
     startTransition(async () => {
       const r1 = await updateUserRole(user.id, role);
       if (r1?.error) { setError(r1.error); return; }
-      const r2 = await updateUserCampus(user.id, campusId || null);
+      const r2 = await updateUserCampuses(user.id, campusIds);
       if (r2?.error) { setError(r2.error); return; }
       setEditing(false);
     });
   };
 
+  const toggleCampus = (campusId: string) => {
+    setCampusIds((current) =>
+      current.includes(campusId)
+        ? current.filter((id) => id !== campusId)
+        : [...current, campusId]
+    );
+  };
+
   const campusDisplay = assignedCampusNames.length
     ? assignedCampusNames.join(", ")
-    : "All";
+    : user.role === "admin" ? "All" : "None";
 
   return (
     <tr className={`hover:bg-gray-50 ${editing ? "bg-blue-50" : ""}`}>
@@ -92,16 +102,22 @@ export function UserRoleEditor({
       {/* Campus */}
       <td className="px-4 py-3">
         {editing ? (
-          <select
-            value={campusId}
-            onChange={(e) => setCampusId(e.target.value)}
-            className="rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">All campuses</option>
+          <div className="grid gap-1 text-xs">
             {campuses.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <label key={c.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={campusIds.includes(c.id)}
+                  onChange={() => toggleCampus(c.id)}
+                  className="h-3.5 w-3.5 rounded border-gray-300"
+                />
+                <span>{c.name}</span>
+              </label>
             ))}
-          </select>
+            {role === "admin" && (
+              <p className="text-[11px] text-gray-400">Admins can see all campuses even with no boxes checked.</p>
+            )}
+          </div>
         ) : (
           <span className="text-gray-600">{campusDisplay}</span>
         )}
@@ -119,7 +135,7 @@ export function UserRoleEditor({
               {isPending ? "Saving…" : "Save"}
             </button>
             <button
-              onClick={() => { setEditing(false); setRole(user.role as Role); setCampusId(user.assigned_campus_id ?? ""); setError(null); }}
+              onClick={() => { setEditing(false); setRole(user.role as Role); setCampusIds(assignedCampusIds); setError(null); }}
               className="text-xs text-gray-500 hover:text-gray-700"
             >
               Cancel
