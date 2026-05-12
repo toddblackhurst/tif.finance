@@ -3,6 +3,13 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 const CATEGORIES = ["ministry", "facilities", "staffing", "missions", "vbs", "worship", "admin", "other"] as const;
+const BANK_DETAILS_STORAGE_KEY = "tif-finance-public-bank-details";
+
+type SavedBankDetails = {
+  email: string;
+  bank_code: string;
+  bank_account_number: string;
+};
 
 type LocaleLabels = {
   title: string; subtitle: string; name: string; email: string;
@@ -11,6 +18,7 @@ type LocaleLabels = {
   paymentType: string; reimbursement: string; pettyCash: string;
   bankCode: string; bankAccountNumber: string; bankHint: string;
   pettyCashHint: string;
+  savedBankDetailsHint: string;
   submit: string; submitting: string; successTitle: string; successMsg: string;
   submitAnother: string; selectCampus: string; selectCategory: string;
   categories: Record<string, string>;
@@ -38,6 +46,7 @@ const LABELS: Record<string, LocaleLabels> = {
     bankAccountNumber: "Bank Account Number",
     bankHint:    "Required for reimbursement by bank transfer",
     pettyCashHint: "No bank details needed",
+    savedBankDetailsHint: "Saved bank details from a previous submission were filled in on this device.",
     submit:      "Submit Request",
     submitting:  "Submitting…",
     successTitle:"Request Submitted",
@@ -89,6 +98,7 @@ const LABELS: Record<string, LocaleLabels> = {
     bankAccountNumber: "銀行帳號",
     bankHint:    "請款匯款時必填",
     pettyCashHint: "不需要填寫銀行資料",
+    savedBankDetailsHint: "已自動帶入這台裝置上先前提交過的銀行資料。",
     submit:      "提交申請",
     submitting:  "提交中…",
     successTitle:"申請已送出",
@@ -138,10 +148,52 @@ export default function SubmitExpensePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [serverError, setServerError] = useState("");
+  const [savedBankDetails, setSavedBankDetails] = useState<SavedBankDetails | null>(null);
+  const [didAutofillSavedBankDetails, setDidAutofillSavedBankDetails] = useState(false);
 
   useEffect(() => {
     fetch("/api/campuses").then(r => r.json()).then(setCampuses).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(BANK_DETAILS_STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as Partial<SavedBankDetails>;
+      if (
+        typeof parsed.email === "string" &&
+        typeof parsed.bank_code === "string" &&
+        typeof parsed.bank_account_number === "string" &&
+        parsed.email &&
+        parsed.bank_code &&
+        parsed.bank_account_number
+      ) {
+        setSavedBankDetails({
+          email: parsed.email.toLowerCase(),
+          bank_code: parsed.bank_code,
+          bank_account_number: parsed.bank_account_number,
+        });
+      }
+    } catch {
+      window.localStorage.removeItem(BANK_DETAILS_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!savedBankDetails) return;
+    if (form.payment_type !== "reimbursement") return;
+    if (form.bank_code || form.bank_account_number) return;
+
+    const normalizedEmail = form.email.trim().toLowerCase();
+    if (!normalizedEmail || normalizedEmail !== savedBankDetails.email) return;
+
+    setForm((current) => ({
+      ...current,
+      bank_code: savedBankDetails.bank_code,
+      bank_account_number: savedBankDetails.bank_account_number,
+    }));
+    setDidAutofillSavedBankDetails(true);
+  }, [form.email, form.payment_type, form.bank_code, form.bank_account_number, savedBankDetails]);
 
   function set(field: string, value: string) {
     setForm(f => {
@@ -191,6 +243,15 @@ export default function SubmitExpensePage() {
         body:    JSON.stringify(form),
       });
       if (res.ok) {
+        if (form.payment_type === "reimbursement") {
+          const detailsToSave = {
+            email: form.email.trim().toLowerCase(),
+            bank_code: form.bank_code.trim(),
+            bank_account_number: form.bank_account_number.trim(),
+          };
+          window.localStorage.setItem(BANK_DETAILS_STORAGE_KEY, JSON.stringify(detailsToSave));
+          setSavedBankDetails(detailsToSave);
+        }
         setStatus("success");
       } else {
         const data = await res.json().catch(() => ({}));
@@ -212,6 +273,7 @@ export default function SubmitExpensePage() {
     setErrors({});
     setStatus("idle");
     setServerError("");
+    setDidAutofillSavedBankDetails(false);
   }
 
   if (status === "success") {
@@ -408,6 +470,11 @@ export default function SubmitExpensePage() {
                   />
                   {errors.bank_account_number && <p className="text-xs text-red-500 mt-1">{errors.bank_account_number}</p>}
                 </div>
+                {didAutofillSavedBankDetails && (
+                  <p className="sm:col-span-2 text-xs text-amber-800">
+                    {t.savedBankDetailsHint}
+                  </p>
+                )}
               </div>
             )}
           </div>
