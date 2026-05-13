@@ -32,6 +32,7 @@ export function ExpenseActionPanel({
   const [paymentReference, setPaymentReference] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const canApprove = (role === "admin" || role === "campus-finance") && status === "submitted";
   const canPay = role === "admin" && status === "approved";
@@ -42,15 +43,20 @@ export function ExpenseActionPanel({
   async function handleApprove() {
     setLoading("approve");
     setError(null);
+    setWarning(null);
     const result = await approveExpense(locale, expenseId, notes || null);
     setLoading(null);
     if (result.error) setError(result.error);
-    else router.refresh();
+    else {
+      if (result.warning) setWarning(result.warning);
+      router.refresh();
+    }
   }
 
   async function handleReject() {
     setLoading("reject");
     setError(null);
+    setWarning(null);
     const result = await rejectExpense(locale, expenseId, notes || null);
     setLoading(null);
     if (result.error) setError(result.error);
@@ -60,6 +66,7 @@ export function ExpenseActionPanel({
   async function handlePay() {
     setLoading("pay");
     setError(null);
+    setWarning(null);
     const result = await markExpensePaid(locale, expenseId, paymentReference || null);
     setLoading(null);
     if (result.error) setError(result.error);
@@ -71,6 +78,11 @@ export function ExpenseActionPanel({
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+      {warning && (
+        <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+          {warning}
         </div>
       )}
 

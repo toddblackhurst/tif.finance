@@ -58,6 +58,12 @@ export default async function BankPage({
     <div className="space-y-8 max-w-4xl">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Bank Reconciliation</h1>
+        <Link
+          href={`/${locale}/bank/cash-flow`}
+          className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          Cash Flow
+        </Link>
       </div>
 
       {/* Upload form */}

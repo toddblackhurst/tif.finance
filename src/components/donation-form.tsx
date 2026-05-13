@@ -41,6 +41,7 @@ function SubmitButton({ label }: { label: string }) {
 }
 
 const INITIAL_STATE: DonationFormState = {};
+const DONATION_PAYMENT_METHODS = ["card", "bank_transfer", "cash"] as const;
 
 export function DonationForm({ locale, campuses, funds, editId, initialValues }: DonationFormProps) {
   const t = useTranslations("donations");
@@ -120,7 +121,7 @@ export function DonationForm({ locale, campuses, funds, editId, initialValues }:
           defaultValue={initialValues?.payment_method ?? ""}
           className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
           <option value="">—</option>
-          {(["cash", "card", "bank_transfer", "check", "other"] as const).map((m) => (
+          {DONATION_PAYMENT_METHODS.map((m) => (
             <option key={m} value={m}>{t(`paymentMethods.${m}`)}</option>
           ))}
         </select>

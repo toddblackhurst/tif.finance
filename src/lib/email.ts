@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import { Resend, type CreateEmailOptions } from "resend";
 
 const FROM = process.env.RESEND_FROM ?? "TIF Finance <onboarding@resend.dev>";
 
@@ -8,6 +8,14 @@ function getResend() {
     throw new Error("RESEND_API_KEY is not configured");
   }
   return new Resend(apiKey);
+}
+
+async function sendEmail(payload: CreateEmailOptions) {
+  const result = await getResend().emails.send(payload);
+  if (result.error) {
+    throw new Error(`Resend email failed: ${result.error.message}`);
+  }
+  return result.data;
 }
 
 function esc(s: string | null | undefined): string {
@@ -43,7 +51,7 @@ export async function sendExpenseSubmittedEmail({
   const link = `${appUrl}/${locale}/expenses/${expenseId}`;
   const fmt = (n: number) => `NT$${Math.round(n).toLocaleString()}`;
 
-  await getResend().emails.send({
+  await sendEmail({
     from: FROM,
     to: approverEmails,
     subject: `[TIF Finance] Expense needs approval — ${fmt(amount)} · ${esc(campus)}`,
@@ -83,7 +91,7 @@ export async function sendPublicSubmissionConfirmationEmail({
 }) {
   const fmt = (n: number) => `NT$${Math.round(n).toLocaleString()}`;
 
-  await getResend().emails.send({
+  await sendEmail({
     from: FROM,
     to: submitterEmail,
     subject: `[TIF Finance] Expense request received — ${fmt(amount)}`,
@@ -125,7 +133,7 @@ export async function sendExpenseApprovedEmail({
   const link = expenseId ? `${appUrl}/${locale}/expenses/${expenseId}` : null;
   const fmt = (n: number) => `NT$${Math.round(n).toLocaleString()}`;
 
-  await getResend().emails.send({
+  await sendEmail({
     from: FROM,
     to: submitterEmail,
     subject: `[TIF Finance] Expense approved — ${fmt(amount)}`,
@@ -172,7 +180,7 @@ export async function sendExpenseNeedsPaymentEmail({
   const link = `${appUrl}/${locale}/expenses/${expenseId}`;
   const fmt = (n: number) => `NT$${Math.round(n).toLocaleString()}`;
 
-  await getResend().emails.send({
+  await sendEmail({
     from: FROM,
     to: treasurerEmails,
     subject: `[TIF Finance] Ready to pay — ${fmt(amount)} · ${esc(campus)}`,
@@ -221,7 +229,7 @@ export async function sendExpenseRejectedEmail({
   const link = expenseId ? `${appUrl}/${locale}/expenses/${expenseId}` : null;
   const fmt = (n: number) => `NT$${Math.round(n).toLocaleString()}`;
 
-  await getResend().emails.send({
+  await sendEmail({
     from: FROM,
     to: submitterEmail,
     subject: `[TIF Finance] Expense not approved — ${fmt(amount)}`,
@@ -265,7 +273,7 @@ export async function sendExpensePaidEmail({
   const link = expenseId ? `${appUrl}/${locale}/expenses/${expenseId}` : null;
   const fmt = (n: number) => `NT$${Math.round(n).toLocaleString()}`;
 
-  await getResend().emails.send({
+  await sendEmail({
     from: FROM,
     to: submitterEmail,
     subject: `[TIF Finance] Expense paid — ${fmt(amount)}`,

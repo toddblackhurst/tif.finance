@@ -18,6 +18,7 @@ function isPublicSubmission(expData: { submitter: { full_name: string | null; em
 
 export interface ExpenseFormState {
   error?: string;
+  warning?: string;
   success?: boolean;
 }
 
@@ -113,6 +114,10 @@ function resolveSubmitter(expData: Awaited<ReturnType<typeof getExpenseWithPeopl
     "A church member";
   const email = expData.submitter?.email ?? expData.submitter_email ?? null;
   return { name, email };
+}
+
+function describeEmailError(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function requireExpenseReviewer(
@@ -493,37 +498,58 @@ export async function approveExpense(
     change_summary: "Expense approved",
   });
 
-  try {
-    const [expData, treasurerEmails] = await Promise.all([
-      getExpenseWithPeople(supabase, expenseId),
-      getTreasurerEmails(),
-    ]);
-    if (expData) {
-      const { name: submitterName, email: submitterEmail } = resolveSubmitter(expData);
+  const emailFailures: string[] = [];
+  const [expData, treasurerEmails] = await Promise.all([
+    getExpenseWithPeople(supabase, expenseId),
+    getTreasurerEmails(),
+  ]);
+  if (expData) {
+    const { name: submitterName, email: submitterEmail } = resolveSubmitter(expData);
+    const notificationJobs: Promise<void>[] = [];
 
-      if (submitterEmail) {
-        await sendExpenseApprovedEmail({
+    if (submitterEmail) {
+      notificationJobs.push(
+        sendExpenseApprovedEmail({
           submitterEmail, submitterName,
           description: expData.description, amount: expData.amount,
           approverName,
           expenseId: isPublicSubmission(expData) ? null : expenseId,
           locale,
-        });
-      }
+        }).catch((error) => {
+          emailFailures.push(`submitter approval email: ${describeEmailError(error)}`);
+        })
+      );
+    }
 
-      if (treasurerEmails.length) {
-        await sendExpenseNeedsPaymentEmail({
+    if (treasurerEmails.length) {
+      notificationJobs.push(
+        sendExpenseNeedsPaymentEmail({
           treasurerEmails, submitterName,
           description: expData.description, amount: expData.amount,
           campus: expData.campuses?.name ?? "",
           approverName, expenseId, locale,
-        });
-      }
+        }).catch((error) => {
+          emailFailures.push(`payment notification email: ${describeEmailError(error)}`);
+        })
+      );
+    } else {
+      emailFailures.push("payment notification email: no TREASURER_EMAIL or PAYMENT_NOTIFICATION_EMAILS configured");
     }
-  } catch (e) { console.error("Email failed:", e); }
+
+    await Promise.all(notificationJobs);
+  } else {
+    emailFailures.push("expense details could not be loaded for notification");
+  }
 
   revalidatePath(`/${locale}/expenses`);
   revalidatePath(`/${locale}/expenses/${expenseId}`);
+  if (emailFailures.length) {
+    console.error("Expense approval notification failed", { expenseId, emailFailures });
+    return {
+      success: true,
+      warning: `Expense approved, but ${emailFailures.length} email notification issue${emailFailures.length === 1 ? "" : "s"} need attention.`,
+    };
+  }
   return { success: true };
 }
 
