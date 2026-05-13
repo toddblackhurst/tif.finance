@@ -37,7 +37,7 @@ export default async function BankCashFlowPage({
   const { month } = await searchParams;
   const supabase = await createClient();
 
-  let query = (supabase as any)
+  let query = supabase
     .from("bank_import_lines")
     .select("id, import_batch_id, transaction_date, amount, description, account_identifier, match_status")
     .order("transaction_date", { ascending: false })
