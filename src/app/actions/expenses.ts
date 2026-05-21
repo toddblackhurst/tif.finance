@@ -28,6 +28,7 @@ const EXPENSE_CATEGORIES = [
   "ministry", "facilities", "staffing", "missions",
   "vbs", "worship", "admin", "other",
 ] as const;
+const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "check", "other"] as const;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -277,16 +278,19 @@ export async function updateExpense(
   const expenseDate = formData.get("expense_date") as string;
   const amount = Number(formData.get("amount"));
   const campusId = formData.get("campus_id") as string;
+  const paymentMethod = formData.get("payment_method") as string;
   const notes = (formData.get("notes") as string) || null;
   const paymentType = (formData.get("payment_type") as string) || null;
   const bankCode = (formData.get("bank_code") as string) || null;
   const bankAccountNumber = (formData.get("bank_account_number") as string) || null;
 
-  if (!description || !category || !expenseDate || !amount || !campusId)
+  if (!description || !category || !expenseDate || !amount || !campusId || !paymentMethod)
     return { error: "Please fill in all required fields." };
   if (amount <= 0) return { error: "Amount must be greater than zero." };
   if (!EXPENSE_CATEGORIES.includes(category as typeof EXPENSE_CATEGORIES[number]))
     return { error: "Invalid category." };
+  if (!PAYMENT_METHODS.includes(paymentMethod as typeof PAYMENT_METHODS[number]))
+    return { error: "Invalid payment method." };
   if (!paymentType || !["reimbursement", "petty_cash"].includes(paymentType))
     return { error: "Please indicate whether this is a reimbursement or was paid from petty cash." };
   if (paymentType === "reimbursement" && (!bankCode || !bankAccountNumber))
@@ -296,7 +300,7 @@ export async function updateExpense(
   let query = (supabase as any)
     .from("expenses")
     .update({
-      description, category, expense_date: expenseDate, amount, campus_id: campusId, notes,
+      description, category, expense_date: expenseDate, amount, campus_id: campusId, payment_method: paymentMethod, notes,
       payment_type: paymentType,
       bank_code: paymentType === "reimbursement" ? bankCode : null,
       bank_account_number: paymentType === "reimbursement" ? bankAccountNumber : null,
@@ -317,7 +321,7 @@ export async function updateExpense(
   await (supabase as any).from("audit_log").insert({
     entity_type: "expense", entity_id: expenseId,
     action: "update", actor_id: user.id,
-    after_snapshot: { description, amount, campus_id: campusId },
+    after_snapshot: { description, amount, campus_id: campusId, payment_method: paymentMethod },
     change_summary: `Expense updated to NT$${amount.toLocaleString()}`,
   });
 
@@ -340,17 +344,21 @@ export async function createExpense(
   const expenseDate = formData.get("expense_date") as string;
   const amount = Number(formData.get("amount"));
   const campusId = formData.get("campus_id") as string;
+  const paymentMethod = formData.get("payment_method") as string;
   const notes = (formData.get("notes") as string) || null;
   const paymentType = (formData.get("payment_type") as string) || null;
   const bankCode = (formData.get("bank_code") as string) || null;
   const bankAccountNumber = (formData.get("bank_account_number") as string) || null;
 
-  if (!description || !category || !expenseDate || !amount || !campusId) {
+  if (!description || !category || !expenseDate || !amount || !campusId || !paymentMethod) {
     return { error: "Please fill in all required fields." };
   }
   if (amount <= 0) return { error: "Amount must be greater than zero." };
   if (!EXPENSE_CATEGORIES.includes(category as typeof EXPENSE_CATEGORIES[number])) {
     return { error: "Invalid category." };
+  }
+  if (!PAYMENT_METHODS.includes(paymentMethod as typeof PAYMENT_METHODS[number])) {
+    return { error: "Invalid payment method." };
   }
   if (!paymentType || !["reimbursement", "petty_cash"].includes(paymentType)) {
     return { error: "Please indicate whether this is a reimbursement or was paid from petty cash." };
@@ -370,6 +378,7 @@ export async function createExpense(
       description, category,
       expense_date: expenseDate,
       amount, campus_id: campusId,
+      payment_method: paymentMethod,
       notes, status,
       payment_type: paymentType,
       bank_code: paymentType === "reimbursement" ? bankCode : null,
@@ -385,7 +394,7 @@ export async function createExpense(
   await (supabase as any).from("audit_log").insert({
     entity_type: "expense", entity_id: expense.id,
     action: "create", actor_id: user.id,
-    after_snapshot: { description, amount, campus_id: campusId, status },
+    after_snapshot: { description, amount, campus_id: campusId, payment_method: paymentMethod, status },
     change_summary: `Expense of NT$${amount.toLocaleString()} ${status === "submitted" ? "submitted" : "saved as draft"}`,
   });
 

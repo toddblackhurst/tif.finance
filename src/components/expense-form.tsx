@@ -12,6 +12,7 @@ import { createExpense, updateExpense, type ExpenseFormState } from "@/app/actio
 interface Campus { id: string; name: string }
 
 type PaymentType = "reimbursement" | "petty_cash";
+const EXPENSE_PAYMENT_METHODS = ["cash", "card", "bank_transfer", "check", "other"] as const;
 
 export interface BankAccountOption {
   bank_code: string;
@@ -29,6 +30,7 @@ interface ExpenseFormProps {
     expense_date: string;
     amount: number;
     campus_id: string;
+    payment_method?: string | null;
     notes?: string | null;
     payment_type?: PaymentType | null;
     bank_code?: string | null;
@@ -76,6 +78,7 @@ function accountOptionValue(option: BankAccountOption) {
 
 export function ExpenseForm({ locale, campuses, bankAccountOptions = [], editId, initialValues }: ExpenseFormProps) {
   const t = useTranslations("expenses");
+  const donationT = useTranslations("donations");
   const action = editId
     ? updateExpense.bind(null, locale, editId)
     : createExpense.bind(null, locale);
@@ -150,6 +153,20 @@ export function ExpenseForm({ locale, campuses, bankAccountOptions = [], editId,
         >
           <option value="">—</option>
           {campuses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="payment_method">{t("paymentMethod")} *</Label>
+        <select
+          id="payment_method" name="payment_method" required
+          defaultValue={initialValues?.payment_method ?? ""}
+          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="">—</option>
+          {EXPENSE_PAYMENT_METHODS.map((method) => (
+            <option key={method} value={method}>{donationT(`paymentMethods.${method}`)}</option>
+          ))}
         </select>
       </div>
 

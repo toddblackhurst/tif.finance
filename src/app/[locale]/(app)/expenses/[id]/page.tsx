@@ -11,6 +11,7 @@ interface ExpenseDetail {
   expense_date: string;
   amount: number;
   status: string;
+  payment_method: string | null;
   notes: string | null;
   approval_notes: string | null;
   approved_at: string | null;
@@ -42,6 +43,7 @@ export default async function ExpenseDetailPage({
 }) {
   const { locale, id } = await params;
   const t = await getTranslations("expenses");
+  const donationT = await getTranslations("donations");
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -57,7 +59,7 @@ export default async function ExpenseDetailPage({
   const { data: rawExpense } = await supabase
     .from("expenses")
     .select(`
-      id, description, category, expense_date, amount, status,
+      id, description, category, expense_date, amount, status, payment_method,
       notes, approval_notes, approved_at, paid_at,
       submitter_id, submitter_name, submitter_email,
       payment_type, bank_code, bank_account_number,
@@ -117,6 +119,12 @@ export default async function ExpenseDetailPage({
           <div>
             <p className="text-gray-500">{t("campus")}</p>
             <p className="font-medium">{expense.campuses?.name ?? "—"}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">{t("paymentMethod")}</p>
+            <p className="font-medium">
+              {expense.payment_method ? donationT(`paymentMethods.${expense.payment_method}`) : "—"}
+            </p>
           </div>
           <div>
             <p className="text-gray-500">{t("fund")}</p>
