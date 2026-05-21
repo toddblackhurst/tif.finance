@@ -12,11 +12,14 @@ interface ExpenseRow {
   amount: number;
   status: string;
   category: string;
+  payment_method: string | null;
   campuses: { name: string } | null;
   funds: { name: string } | null;
 }
 
 interface CampusRow { id: string; name: string }
+const PAYMENT_METHOD_VALUES = ["cash", "card", "bank_transfer", "check", "other"] as const;
+const SORT_VALUES = ["payment_method_asc"] as const;
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-gray-100 text-gray-700",
@@ -38,12 +41,35 @@ export default async function ExpensesPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ status?: string; campus?: string; month?: string }>;
+  searchParams: Promise<{ status?: string; campus?: string; month?: string; method?: string; sort?: string }>;
 }) {
   const { locale } = await params;
-  const { status: statusFilter, campus: campusFilter, month: monthFilter } = await searchParams;
+  const {
+    status: statusFilter,
+    campus: campusFilter,
+    month: monthFilter,
+    method: rawMethodFilter,
+    sort: rawSort,
+  } = await searchParams;
   const t = await getTranslations("expenses");
+  const donationT = await getTranslations("donations");
   const supabase = await createClient();
+  const sortLabel = locale === "zh-TW" ? "排序" : "Sort";
+  const allPaymentMethodsLabel = locale === "zh-TW" ? "所有付款方式" : "All Payment Methods";
+  const methodFilter = PAYMENT_METHOD_VALUES.includes(rawMethodFilter as typeof PAYMENT_METHOD_VALUES[number])
+    ? rawMethodFilter as typeof PAYMENT_METHOD_VALUES[number]
+    : "";
+  const sort = SORT_VALUES.includes(rawSort as typeof SORT_VALUES[number]) ? rawSort : "";
+  const paymentMethods = PAYMENT_METHOD_VALUES.map((method) => ({
+    value: method,
+    label: donationT(`paymentMethods.${method}`),
+  }));
+  const paymentMethodLabels: Record<string, string> = Object.fromEntries(
+    paymentMethods.map((method) => [method.value, method.label])
+  );
+  const sortOptions = [
+    { value: "payment_method_asc", label: `${t("paymentMethod")} (A-Z)` },
+  ];
 
   const { data: { user } } = await supabase.auth.getUser();
   const { data: profileData } = await supabase
@@ -57,12 +83,11 @@ export default async function ExpensesPage({
   let query = supabase
     .from("expenses")
     .select(`
-      id, expense_date, description, amount, status, category,
+      id, expense_date, description, amount, status, category, payment_method,
       campuses ( name ),
       funds ( name )
     `)
     .is("deleted_at", null)
-    .order("expense_date", { ascending: false })
     .limit(200);
 
   if (statusFilter) query = query.eq("status", statusFilter);
@@ -71,12 +96,20 @@ export default async function ExpensesPage({
     const { start, end } = parseMonth(monthFilter);
     query = query.gte("expense_date", start).lt("expense_date", end);
   }
+  if (methodFilter) query = query.eq("payment_method", methodFilter);
+  if (sort === "payment_method_asc") {
+    query = query
+      .order("payment_method", { ascending: true, nullsFirst: false })
+      .order("expense_date", { ascending: false });
+  } else {
+    query = query.order("expense_date", { ascending: false });
+  }
 
   const { data: rawData } = await query;
   const expenses = (rawData ?? []) as ExpenseRow[];
 
   const totalAmount = expenses.reduce((s, e) => s + e.amount, 0);
-  const hasFilter = !!(statusFilter || campusFilter || monthFilter);
+  const hasFilter = !!(statusFilter || campusFilter || monthFilter || methodFilter || sort);
 
   return (
     <div className="space-y-4">
@@ -107,7 +140,16 @@ export default async function ExpensesPage({
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <Suspense>
-          <FilterBar campuses={campuses} showStatus />
+          <FilterBar
+            campuses={campuses}
+            showStatus
+            paymentMethodMode="single"
+            allPaymentMethodsLabel={allPaymentMethodsLabel}
+            paymentMethodLabel={t("paymentMethod")}
+            paymentMethods={paymentMethods}
+            sortLabel={sortLabel}
+            sortOptions={sortOptions}
+          />
         </Suspense>
         {hasFilter && (
           <span className="text-sm text-gray-500">
@@ -125,13 +167,14 @@ export default async function ExpensesPage({
               <th className="px-4 py-3 text-left">{t("campus")}</th>
               <th className="px-4 py-3 text-left">{t("category")}</th>
               <th className="px-4 py-3 text-right">{t("amount")}</th>
+              <th className="px-4 py-3 text-left">{t("paymentMethod")}</th>
               <th className="px-4 py-3 text-left">{t("status")}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {expenses.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                   No expenses found.
                 </td>
               </tr>
@@ -154,6 +197,9 @@ export default async function ExpensesPage({
                   NT${e.amount.toLocaleString()}
                 </td>
                 <td className="px-4 py-3">
+                  {e.payment_method ? paymentMethodLabels[e.payment_method] ?? e.payment_method : "—"}
+                </td>
+                <td className="px-4 py-3">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[e.status] ?? ""}`}>
                     {t(`statuses.${e.status}`)}
                   </span>
@@ -170,7 +216,7 @@ export default async function ExpensesPage({
                 <td className="px-4 py-2 text-right font-mono">
                   NT${totalAmount.toLocaleString()}
                 </td>
-                <td />
+                <td colSpan={2} />
               </tr>
             </tfoot>
           )}

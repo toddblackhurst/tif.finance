@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { href: "/expense-review", key: "expenseReview", adminOnly: false, financeOnly: true },
   { href: "/donors",    key: "donors",     adminOnly: false, financeOnly: false },
   { href: "/reports",   key: "reports",    adminOnly: false, financeOnly: false },
+  { href: "/summer",    key: "summer",     adminOnly: false, financeOnly: false },
   { href: "/card-reconciliation", key: "cardReconciliation", adminOnly: true, financeOnly: false },
   { href: "/bank",      key: "bankTransactions", adminOnly: true, financeOnly: false },
   { href: "/admin",     key: "admin",      adminOnly: true, financeOnly: false },

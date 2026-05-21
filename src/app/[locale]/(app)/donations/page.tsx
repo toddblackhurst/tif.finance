@@ -18,6 +18,22 @@ interface DonationRow {
 }
 
 interface CampusRow { id: string; name: string }
+type SearchParamValue = string | string[] | undefined;
+
+const PAYMENT_METHOD_VALUES = ["cash", "card", "bank_transfer", "check", "other"] as const;
+const SORT_VALUES = ["payment_method_asc"] as const;
+
+function normalizeMethods(value: SearchParamValue) {
+  const rawValues = Array.isArray(value) ? value : value ? [value] : [];
+  return rawValues.filter((method, index, allMethods): method is typeof PAYMENT_METHOD_VALUES[number] => (
+    PAYMENT_METHOD_VALUES.includes(method as typeof PAYMENT_METHOD_VALUES[number]) &&
+    allMethods.indexOf(method) === index
+  ));
+}
+
+function normalizeSort(value: string | undefined) {
+  return SORT_VALUES.includes(value as typeof SORT_VALUES[number]) ? value : "";
+}
 
 function parseMonth(m: string): { start: string; end: string } {
   const [y, mo] = m.split("-").map(Number);
@@ -31,12 +47,25 @@ export default async function DonationsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ campus?: string; month?: string }>;
+  searchParams: Promise<{ campus?: string; month?: string; method?: SearchParamValue; sort?: string }>;
 }) {
   const { locale } = await params;
-  const { campus: campusFilter, month: monthFilter } = await searchParams;
+  const { campus: campusFilter, month: monthFilter, method: rawMethodFilter, sort: rawSort } = await searchParams;
   const t = await getTranslations("donations");
   const supabase = await createClient();
+  const sortLabel = locale === "zh-TW" ? "排序" : "Sort";
+  const methodFilters = normalizeMethods(rawMethodFilter);
+  const sort = normalizeSort(rawSort);
+  const paymentMethods = PAYMENT_METHOD_VALUES.map((method) => ({
+    value: method,
+    label: t(`paymentMethods.${method}`),
+  }));
+  const paymentMethodLabels: Record<string, string> = Object.fromEntries(
+    paymentMethods.map((method) => [method.value, method.label])
+  );
+  const sortOptions = [
+    { value: "payment_method_asc", label: `${t("paymentMethod")} (A-Z)` },
+  ];
 
   const { data: campusData } = await supabase.from("campuses").select("id, name").order("name");
   const campuses = (campusData ?? []) as CampusRow[];
@@ -50,7 +79,6 @@ export default async function DonationsPage({
       funds ( name )
     `)
     .is("deleted_at", null)
-    .order("gift_date", { ascending: false })
     .limit(200);
 
   if (campusFilter) query = query.eq("campus_id", campusFilter);
@@ -58,12 +86,20 @@ export default async function DonationsPage({
     const { start, end } = parseMonth(monthFilter);
     query = query.gte("gift_date", start).lt("gift_date", end);
   }
+  if (methodFilters.length > 0) query = query.in("payment_method", methodFilters);
+  if (sort === "payment_method_asc") {
+    query = query
+      .order("payment_method", { ascending: true })
+      .order("gift_date", { ascending: false });
+  } else {
+    query = query.order("gift_date", { ascending: false });
+  }
 
   const { data: rawData } = await query;
   const donations = (rawData ?? []) as DonationRow[];
 
   const totalAmount = donations.reduce((s, d) => s + d.amount, 0);
-  const hasFilter = !!(campusFilter || monthFilter);
+  const hasFilter = !!(campusFilter || monthFilter || methodFilters.length || sort);
 
   return (
     <div className="space-y-4">
@@ -84,7 +120,14 @@ export default async function DonationsPage({
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <Suspense>
-          <FilterBar campuses={campuses} />
+          <FilterBar
+            campuses={campuses}
+            paymentMethodMode="multi"
+            paymentMethodLabel={t("paymentMethod")}
+            paymentMethods={paymentMethods}
+            sortLabel={sortLabel}
+            sortOptions={sortOptions}
+          />
         </Suspense>
         {hasFilter && (
           <span className="text-sm text-gray-500">
@@ -128,7 +171,7 @@ export default async function DonationsPage({
                 <td className="px-4 py-3 text-right font-mono">
                   NT${d.amount.toLocaleString()}
                 </td>
-                <td className="px-4 py-3 capitalize">{d.payment_method}</td>
+                <td className="px-4 py-3">{paymentMethodLabels[d.payment_method] ?? d.payment_method}</td>
                 <td className="px-4 py-3">
                   <Link
                     href={`/${locale}/donations/${d.id}/edit`}
