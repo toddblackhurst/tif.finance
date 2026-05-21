@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/filter-bar";
+import { SummerDeleteButton } from "@/components/summer-delete-button";
 
 interface DonationRow {
   id: string;
@@ -66,6 +67,14 @@ export default async function DonationsPage({
   const sortOptions = [
     { value: "payment_method_asc", label: `${t("paymentMethod")} (A-Z)` },
   ];
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profileData } = await supabase
+    .from("user_profiles")
+    .select("role")
+    .eq("id", user?.id ?? "")
+    .single();
+  const role = (profileData as { role: string } | null)?.role ?? "viewer";
+  const canDelete = role === "admin" || role === "campus-finance";
 
   const { data: campusData } = await supabase.from("campuses").select("id, name").order("name");
   const campuses = (campusData ?? []) as CampusRow[];
@@ -146,7 +155,7 @@ export default async function DonationsPage({
               <th className="px-4 py-3 text-left">{t("fund")}</th>
               <th className="px-4 py-3 text-right">{t("amount")}</th>
               <th className="px-4 py-3 text-left">{t("paymentMethod")}</th>
-              <th className="px-4 py-3"></th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -173,12 +182,21 @@ export default async function DonationsPage({
                 </td>
                 <td className="px-4 py-3">{paymentMethodLabels[d.payment_method] ?? d.payment_method}</td>
                 <td className="px-4 py-3">
-                  <Link
-                    href={`/${locale}/donations/${d.id}/edit`}
-                    className="text-xs text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </Link>
+                  <div className="flex items-center justify-end gap-2">
+                    <Link
+                      href={`/${locale}/donations/${d.id}/edit`}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </Link>
+                    {canDelete && (
+                      <SummerDeleteButton
+                        locale={locale}
+                        recordId={d.id}
+                        kind="donation"
+                      />
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/filter-bar";
+import { SummerDeleteButton } from "@/components/summer-delete-button";
 
 interface ExpenseRow {
   id: string;
@@ -169,12 +170,13 @@ export default async function ExpensesPage({
               <th className="px-4 py-3 text-right">{t("amount")}</th>
               <th className="px-4 py-3 text-left">{t("paymentMethod")}</th>
               <th className="px-4 py-3 text-left">{t("status")}</th>
+              {canSubmit && <th className="px-4 py-3 text-right">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y">
             {expenses.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={canSubmit ? 8 : 7} className="px-4 py-8 text-center text-gray-400">
                   No expenses found.
                 </td>
               </tr>
@@ -204,6 +206,15 @@ export default async function ExpensesPage({
                     {t(`statuses.${e.status}`)}
                   </span>
                 </td>
+                {canSubmit && (
+                  <td className="px-4 py-3 text-right">
+                    <SummerDeleteButton
+                      locale={locale}
+                      recordId={e.id}
+                      kind="expense"
+                    />
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -216,7 +227,7 @@ export default async function ExpensesPage({
                 <td className="px-4 py-2 text-right font-mono">
                   NT${totalAmount.toLocaleString()}
                 </td>
-                <td colSpan={2} />
+                <td colSpan={canSubmit ? 3 : 2} />
               </tr>
             </tfoot>
           )}

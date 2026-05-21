@@ -17,8 +17,8 @@ interface SummerDeleteButtonProps {
 
 const LABELS: Record<SummerDeleteKind, string> = {
   bank: "bank transaction",
-  donation: "cash donation",
-  expense: "cash expense",
+  donation: "donation",
+  expense: "expense",
 };
 
 export function SummerDeleteButton({ locale, recordId, kind }: SummerDeleteButtonProps) {

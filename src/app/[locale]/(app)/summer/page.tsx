@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { SummerDeleteButton } from "@/components/summer-delete-button";
 
-type SourceFilter = "all" | "bank" | "cash";
+type SourceFilter = "all" | "bank" | "cash" | "bank_transfer";
 type FlowFilter = "all" | "income" | "expense";
 
 interface BankLine {
@@ -15,21 +15,23 @@ interface BankLine {
   match_status: "unmatched" | "matched" | "ignored";
 }
 
-interface CashDonationLine {
+interface DonationLine {
   id: string;
   gift_date: string;
   amount: number;
+  payment_method: string | null;
   notes: string | null;
   donors: { display_name: string } | null;
   campuses: { name: string } | null;
   funds: { name: string } | null;
 }
 
-interface CashExpenseLine {
+interface ExpenseLine {
   id: string;
   expense_date: string;
   description: string;
   amount: number;
+  payment_method: string | null;
   status: string;
   category: string;
   campuses: { name: string } | null;
@@ -40,7 +42,7 @@ interface SummerRow {
   id: string;
   recordId: string;
   date: string;
-  source: "bank" | "cash";
+  source: "bank" | "cash" | "bank_transfer";
   flow: "income" | "expense";
   label: string;
   description: string;
@@ -55,6 +57,7 @@ const SOURCE_OPTIONS: { value: SourceFilter; label: string }[] = [
   { value: "all", label: "All Sources" },
   { value: "bank", label: "Bank Only" },
   { value: "cash", label: "Cash Only" },
+  { value: "bank_transfer", label: "Bank Transfer Only" },
 ];
 
 const FLOW_OPTIONS: { value: FlowFilter; label: string }[] = [
@@ -115,9 +118,15 @@ function matchesSearch(row: SummerRow, q: string) {
 }
 
 function sourceBadge(source: SummerRow["source"]) {
-  return source === "bank"
-    ? "bg-blue-50 text-blue-700 border-blue-200"
-    : "bg-amber-50 text-amber-700 border-amber-200";
+  if (source === "bank") return "bg-blue-50 text-blue-700 border-blue-200";
+  if (source === "bank_transfer") return "bg-teal-50 text-teal-700 border-teal-200";
+  return "bg-amber-50 text-amber-700 border-amber-200";
+}
+
+function sourceLabel(source: SummerRow["source"]) {
+  if (source === "bank") return "Bank";
+  if (source === "bank_transfer") return "Bank Transfer";
+  return "Cash";
 }
 
 function flowBadge(flow: SummerRow["flow"]) {
@@ -154,8 +163,17 @@ export default async function SummerPage({
   const flow = normalizeFlow(rawFlow);
   const q = rawQuery?.trim() ?? "";
   const monthRange = month ? parseMonth(month) : null;
-  const showBank = source !== "cash";
-  const showCash = source !== "bank";
+  const showBank = source === "all" || source === "bank";
+  const showCash = source === "all" || source === "cash";
+  const showBankTransfer = source === "all" || source === "bank_transfer";
+  const donationMethods = [
+    ...(showCash ? ["cash"] : []),
+    ...(showBankTransfer ? ["bank_transfer"] : []),
+  ];
+  const expenseMethods = [
+    ...(showCash ? ["cash"] : []),
+    ...(showBankTransfer ? ["bank_transfer"] : []),
+  ];
 
   let bankQuery = supabase
     .from("bank_import_lines")
@@ -173,12 +191,11 @@ export default async function SummerPage({
   let donationQuery = supabase
     .from("donations")
     .select(`
-      id, gift_date, amount, notes,
+      id, gift_date, amount, payment_method, notes,
       donors ( display_name ),
       campuses ( name ),
       funds ( name )
     `)
-    .eq("payment_method", "cash")
     .is("deleted_at", null)
     .order("gift_date", { ascending: false })
     .limit(500);
@@ -186,15 +203,17 @@ export default async function SummerPage({
   if (monthRange) {
     donationQuery = donationQuery.gte("gift_date", monthRange.start).lt("gift_date", monthRange.end);
   }
+  if (donationMethods.length > 0) {
+    donationQuery = donationQuery.in("payment_method", donationMethods);
+  }
 
   let expenseQuery = supabase
     .from("expenses")
     .select(`
-      id, expense_date, description, amount, status, category,
+      id, expense_date, description, amount, payment_method, status, category,
       campuses ( name ),
       funds ( name )
     `)
-    .eq("payment_method", "cash")
     .is("deleted_at", null)
     .order("expense_date", { ascending: false })
     .limit(500);
@@ -202,11 +221,18 @@ export default async function SummerPage({
   if (monthRange) {
     expenseQuery = expenseQuery.gte("expense_date", monthRange.start).lt("expense_date", monthRange.end);
   }
+  if (expenseMethods.length > 0) {
+    expenseQuery = expenseQuery.in("payment_method", expenseMethods);
+  }
 
   const [bankResult, donationResult, expenseResult] = await Promise.all([
     showBank ? bankQuery : Promise.resolve({ data: [] as BankLine[] }),
-    showCash && flow !== "expense" ? donationQuery : Promise.resolve({ data: [] as CashDonationLine[] }),
-    showCash && flow !== "income" ? expenseQuery : Promise.resolve({ data: [] as CashExpenseLine[] }),
+    donationMethods.length > 0 && flow !== "expense"
+      ? donationQuery
+      : Promise.resolve({ data: [] as DonationLine[] }),
+    expenseMethods.length > 0 && flow !== "income"
+      ? expenseQuery
+      : Promise.resolve({ data: [] as ExpenseLine[] }),
   ]);
 
   const bankRows = ((bankResult.data ?? []) as BankLine[]).map((line): SummerRow => ({
@@ -224,39 +250,40 @@ export default async function SummerPage({
     deleteKind: "bank",
   }));
 
-  const cashDonationRows = ((donationResult.data ?? []) as CashDonationLine[]).map((line): SummerRow => ({
+  const donationRows = ((donationResult.data ?? []) as DonationLine[]).map((line): SummerRow => ({
     id: `donation-${line.id}`,
     recordId: line.id,
     date: line.gift_date,
-    source: "cash",
+    source: line.payment_method === "bank_transfer" ? "bank_transfer" : "cash",
     flow: "income",
-    label: "Cash Donation",
-    description: line.donors?.display_name ?? "Cash donation",
-    reference: [line.campuses?.name, line.funds?.name].filter(Boolean).join(" • ") || "Cash receipt",
+    label: line.payment_method === "bank_transfer" ? "Bank Transfer Donation" : "Cash Donation",
+    description: line.donors?.display_name ?? (line.payment_method === "bank_transfer" ? "Bank transfer donation" : "Cash donation"),
+    reference: [line.campuses?.name, line.funds?.name].filter(Boolean).join(" • ")
+      || (line.payment_method === "bank_transfer" ? "Bank transfer receipt" : "Cash receipt"),
     detail: line.notes?.trim() || "Recorded donation",
     amount: line.amount,
     href: `/${locale}/donations/${line.id}/edit`,
     deleteKind: "donation",
   }));
 
-  const cashExpenseRows = ((expenseResult.data ?? []) as CashExpenseLine[]).map((line): SummerRow => ({
+  const expenseRows = ((expenseResult.data ?? []) as ExpenseLine[]).map((line): SummerRow => ({
     id: `expense-${line.id}`,
     recordId: line.id,
     date: line.expense_date,
-    source: "cash",
+    source: line.payment_method === "bank_transfer" ? "bank_transfer" : "cash",
     flow: "expense",
-    label: "Cash Expense",
+    label: line.payment_method === "bank_transfer" ? "Bank Transfer Expense" : "Cash Expense",
     description: line.description,
     reference: [line.campuses?.name, line.funds?.name || EXPENSE_CATEGORY_LABELS[line.category] || line.category]
       .filter(Boolean)
-      .join(" • ") || "Cash expense",
+      .join(" • ") || (line.payment_method === "bank_transfer" ? "Bank transfer expense" : "Cash expense"),
     detail: EXPENSE_STATUS_LABELS[line.status] ?? line.status,
     amount: line.amount,
     href: `/${locale}/expenses/${line.id}`,
     deleteKind: "expense",
   }));
 
-  const rows = [...bankRows, ...cashDonationRows, ...cashExpenseRows]
+  const rows = [...bankRows, ...donationRows, ...expenseRows]
     .filter((row) => matchesSearch(row, q))
     .sort((a, b) => {
       if (a.date !== b.date) return a.date < b.date ? 1 : -1;
@@ -278,7 +305,7 @@ export default async function SummerPage({
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">Summer</h1>
           <p className="text-sm text-gray-500">
-            Combined bank-import rows plus recorded cash donations and cash expenses.
+            Combined bank-import rows plus recorded cash and bank-transfer donations and expenses.
           </p>
         </div>
         <form className="flex flex-wrap items-center gap-2" action={`/${locale}/summer`}>
@@ -379,7 +406,7 @@ export default async function SummerPage({
                 <td className="whitespace-nowrap px-4 py-3">{row.date}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${sourceBadge(row.source)}`}>
-                    {row.source === "bank" ? "Bank" : "Cash"}
+                    {sourceLabel(row.source)}
                   </span>
                 </td>
                 <td className="px-4 py-3">
