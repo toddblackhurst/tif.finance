@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { SummerDeleteButton } from "@/components/summer-delete-button";
 
 type SourceFilter = "all" | "bank" | "cash";
 type FlowFilter = "all" | "income" | "expense";
@@ -37,6 +38,7 @@ interface CashExpenseLine {
 
 interface SummerRow {
   id: string;
+  recordId: string;
   date: string;
   source: "bank" | "cash";
   flow: "income" | "expense";
@@ -46,6 +48,7 @@ interface SummerRow {
   detail: string;
   amount: number;
   href: string | null;
+  deleteKind: "bank" | "donation" | "expense";
 }
 
 const SOURCE_OPTIONS: { value: SourceFilter; label: string }[] = [
@@ -138,6 +141,14 @@ export default async function SummerPage({
     q: rawQuery,
   } = await searchParams;
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profileData } = await supabase
+    .from("user_profiles")
+    .select("role")
+    .eq("id", user?.id ?? "")
+    .single();
+  const role = (profileData as { role: string } | null)?.role ?? "viewer";
+  const canDelete = role === "admin" || role === "campus-finance";
 
   const source = normalizeSource(rawSource);
   const flow = normalizeFlow(rawFlow);
@@ -200,6 +211,7 @@ export default async function SummerPage({
 
   const bankRows = ((bankResult.data ?? []) as BankLine[]).map((line): SummerRow => ({
     id: `bank-${line.id}`,
+    recordId: line.id,
     date: line.transaction_date,
     source: "bank",
     flow: line.amount > 0 ? "income" : "expense",
@@ -209,10 +221,12 @@ export default async function SummerPage({
     detail: line.match_status,
     amount: Math.abs(line.amount),
     href: `/${locale}/bank/${line.import_batch_id}`,
+    deleteKind: "bank",
   }));
 
   const cashDonationRows = ((donationResult.data ?? []) as CashDonationLine[]).map((line): SummerRow => ({
     id: `donation-${line.id}`,
+    recordId: line.id,
     date: line.gift_date,
     source: "cash",
     flow: "income",
@@ -222,10 +236,12 @@ export default async function SummerPage({
     detail: line.notes?.trim() || "Recorded donation",
     amount: line.amount,
     href: `/${locale}/donations/${line.id}/edit`,
+    deleteKind: "donation",
   }));
 
   const cashExpenseRows = ((expenseResult.data ?? []) as CashExpenseLine[]).map((line): SummerRow => ({
     id: `expense-${line.id}`,
+    recordId: line.id,
     date: line.expense_date,
     source: "cash",
     flow: "expense",
@@ -237,6 +253,7 @@ export default async function SummerPage({
     detail: EXPENSE_STATUS_LABELS[line.status] ?? line.status,
     amount: line.amount,
     href: `/${locale}/expenses/${line.id}`,
+    deleteKind: "expense",
   }));
 
   const rows = [...bankRows, ...cashDonationRows, ...cashExpenseRows]
@@ -346,12 +363,13 @@ export default async function SummerPage({
               <th className="px-4 py-3 text-left">Detail</th>
               <th className="px-4 py-3 text-right">Income</th>
               <th className="px-4 py-3 text-right">Expense</th>
+              {canDelete && <th className="px-4 py-3 text-right">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y">
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-gray-500">
+                <td colSpan={canDelete ? 9 : 8} className="px-4 py-10 text-center text-gray-500">
                   No Summer transactions found for the current filters.
                 </td>
               </tr>
@@ -386,6 +404,15 @@ export default async function SummerPage({
                 <td className="px-4 py-3 text-right font-mono text-red-700">
                   {row.flow === "expense" ? fmt(row.amount) : "-"}
                 </td>
+                {canDelete && (
+                  <td className="px-4 py-3 text-right">
+                    <SummerDeleteButton
+                      locale={locale}
+                      recordId={row.recordId}
+                      kind={row.deleteKind}
+                    />
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

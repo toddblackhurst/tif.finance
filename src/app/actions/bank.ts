@@ -147,6 +147,57 @@ export async function unmatchBankLine(locale: string, lineId: string) {
   return { ok: true };
 }
 
+export async function deleteBankLine(
+  locale: string,
+  lineId: string
+): Promise<{ error?: string; success?: boolean }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const { data: profileRaw } = await supabase
+    .from("user_profiles")
+    .select("id, role")
+    .eq("id", user.id)
+    .single();
+  const profile = profileRaw as { id: string; role: string } | null;
+  if (!profile || (profile.role !== "admin" && profile.role !== "campus-finance")) {
+    return { error: "Not authorized to delete bank transactions." };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (supabase as any)
+    .from("bank_import_lines")
+    .select("import_batch_id")
+    .eq("id", lineId)
+    .single();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from("bank_import_lines")
+    .delete()
+    .eq("id", lineId);
+
+  if (error) return { error: error.message };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any).from("audit_log").insert({
+    entity_type: "bank_import_line",
+    entity_id: lineId,
+    action: "delete",
+    actor_id: user.id,
+    change_summary: "Bank transaction deleted from Summer ledger",
+  });
+
+  revalidatePath(`/${locale}/bank`);
+  revalidatePath(`/${locale}/bank/cash-flow`);
+  revalidatePath(`/${locale}/summer`);
+  if ((existing as { import_batch_id?: string } | null)?.import_batch_id) {
+    revalidatePath(`/${locale}/bank/${(existing as { import_batch_id: string }).import_batch_id}`);
+  }
+  return { success: true };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function parseCSVLine(line: string): string[] {

@@ -679,3 +679,42 @@ export async function markExpensePaid(
   revalidatePath(`/${locale}/expenses/${expenseId}`);
   return { success: true };
 }
+
+export async function deleteExpense(
+  locale: string,
+  expenseId: string
+): Promise<ExpenseFormState> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: profile } = await supabase
+    .from("user_profiles").select("role").eq("id", user.id).single();
+  const role = (profile as { role: string } | null)?.role ?? "viewer";
+  if (role !== "admin" && role !== "campus-finance") {
+    return { error: "Not authorized to delete expenses." };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from("expenses")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", expenseId)
+    .is("deleted_at", null);
+
+  if (error) return { error: error.message };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any).from("audit_log").insert({
+    entity_type: "expense",
+    entity_id: expenseId,
+    action: "delete",
+    actor_id: user.id,
+    change_summary: "Expense deleted from Summer ledger",
+  });
+
+  revalidatePath(`/${locale}`);
+  revalidatePath(`/${locale}/expenses`);
+  revalidatePath(`/${locale}/summer`);
+  return { success: true };
+}

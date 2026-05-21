@@ -127,6 +127,45 @@ export async function updateDonation(
   redirect(`/${locale}/donations`);
 }
 
+export async function deleteDonation(
+  locale: string,
+  donationId: string
+): Promise<{ error?: string; success?: boolean }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: profile } = await supabase
+    .from("user_profiles").select("role").eq("id", user.id).single();
+  const role = (profile as { role: string } | null)?.role ?? "viewer";
+  if (role !== "admin" && role !== "campus-finance") {
+    return { error: "Not authorized to delete donations." };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from("donations")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", donationId)
+    .is("deleted_at", null);
+
+  if (error) return { error: error.message };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any).from("audit_log").insert({
+    entity_type: "donation",
+    entity_id: donationId,
+    action: "delete",
+    actor_id: user.id,
+    change_summary: "Donation deleted from Summer ledger",
+  });
+
+  revalidatePath(`/${locale}`);
+  revalidatePath(`/${locale}/donations`);
+  revalidatePath(`/${locale}/summer`);
+  return { success: true };
+}
+
 export async function updateDonor(
   locale: string,
   donorId: string,
