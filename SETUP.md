@@ -1,139 +1,101 @@
 # TIF Finance — Setup Guide
 
+This guide is for getting a clean local copy ready for real work without relying on stale defaults.
+
 ## Before You Start
 
-You'll need:
-- A dedicated church Google account (e.g. `tif.finance@gmail.com`)
-- Node.js 18+ installed on your Mac
-- A free Supabase account
-- A free Vercel account
+You will need:
 
----
+- Node `20.20.0` available locally
+- A Supabase project for `tif-finance`
+- A Vercel project for the frontend
+- A Resend account for email notifications
 
-## Step 1: Create the Supabase Project
-
-1. Go to [supabase.com](https://supabase.com) and sign in with the church Google account
-2. Click **New Project** — name it `tif-finance`
-3. Choose a strong database password and save it somewhere safe
-4. Wait ~2 minutes for the project to provision
-
-### Apply the Database Schema
-
-1. In your Supabase project, go to **SQL Editor**
-2. Open `supabase/migrations/001_initial_schema.sql` from this project folder
-3. Paste the entire contents into the SQL Editor and click **Run**
-4. You should see "Success" — the tables, views, and RLS policies are now created
-
-### Enable Google Authentication
-
-1. In Supabase, go to **Authentication → Providers → Google**
-2. Enable it, then follow the instructions to create a Google OAuth Client in Google Cloud Console
-3. Set the **Authorized redirect URI** to:
-   `https://your-project-ref.supabase.co/auth/v1/callback`
-4. Copy the Client ID and Secret back into Supabase
-
-### Get Your API Keys
-
-1. Go to **Project Settings → API**
-2. Copy:
-   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-   - **anon public** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - **service_role** key → `SUPABASE_SERVICE_ROLE_KEY` (keep secret!)
-
----
-
-## Step 2: Configure Environment Variables
-
-1. Copy `.env.local.example` to `.env.local` in the project folder:
-   ```
-   cp .env.local.example .env.local
-   ```
-2. Fill in your three Supabase values from Step 1
-
----
-
-## Step 3: Run Locally
+The repo already includes `.nvmrc`, so the safest local start is:
 
 ```bash
-cd tif-finance
-npm install
+nvm use
+npm ci
+```
+
+## 1. Environment File
+
+Copy the example file:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Fill in:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_APP_URL`
+- `RESEND_API_KEY`
+- `RESEND_FROM`
+- `TREASURER_EMAIL`
+- `PAYMENT_NOTIFICATION_EMAILS`
+- `DAILY_SUMMARY_EMAIL`
+
+## 2. Supabase Schema
+
+Apply the SQL files in `supabase/migrations/` in filename order:
+
+1. `001_initial_schema.sql`
+2. `002_multi_campus_roles.sql`
+3. `002b_fix_trigger_column.sql`
+4. `003_expense_payment_reference.sql`
+5. `004_nullable_expense_fund.sql`
+6. `005_expense_payment_info.sql`
+7. `006_donation_contact_email.sql`
+8. `007_explicit_data_api_grants.sql`
+
+Important:
+
+- `006_donation_contact_email.sql` adds the optional donation contact email field used by the current donation flow and export.
+- `007_explicit_data_api_grants.sql` hardens Data API access for current Supabase behavior and should be applied for authenticated app access plus public reimbursement submissions.
+
+## 3. Auth Setup
+
+In Supabase:
+
+1. Enable Google auth if your team will log in with Google.
+2. Add the auth callback URL for your local or deployed app.
+3. Confirm the app URL in `.env.local` matches the environment you are testing.
+
+## 4. Local Run
+
+Start the dev server:
+
+```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — you should see the TIF Finance login page.
+Useful local routes:
 
-**First login:**
-- Sign in with your church Google account
-- Your user profile is created automatically
-- Go to Supabase → Table Editor → `user_profiles` and set your `role` to `admin`
-- Refresh the app — you now have full access
+- `http://localhost:3000/en/login`
+- `http://localhost:3000/en/public`
+- `http://localhost:3000/en/submit`
 
----
+## 5. Verification Pass
 
-## Step 4: Add Team Members
+Before handing the repo off to someone else or shipping changes, run:
 
-For each finance volunteer:
-1. They sign in with their Google account (this creates their `user_profiles` row)
-2. You (admin) go to Admin → Users and set their role:
-   - **admin** — full access to all campuses
-   - **campus-finance** — can only see/enter data for their assigned campus
-   - **viewer** — read-only access
-3. Set their **Assigned Campus** if they are `campus-finance`
-
----
-
-## Step 5: Deploy to Vercel
-
-1. Go to [vercel.com](https://vercel.com) and sign in with the church Google account
-2. Click **New Project → Import Git Repository**
-3. Either:
-   - Push this project to a GitHub repo first, then import it, OR
-   - Use the Vercel CLI: `npx vercel --prod`
-4. Add your three environment variables in Vercel's **Settings → Environment Variables**
-5. After deploy, update your Supabase Google OAuth redirect URI to include your Vercel URL:
-   `https://your-tif-finance.vercel.app/auth/callback`
-
----
-
-## Step 6: Plan PCO Sync (Phase 4)
-
-When you're ready to sync donors from Planning Center Online:
-
-1. Log into PCO → **Integrations → Developer → Personal Access Tokens**
-2. Create a token and save it
-3. We'll build the sync script in Phase 4 — no code changes needed now
-
----
-
-## Folder Structure
-
+```bash
+npm run lint
+npm run typecheck
+npm run build
 ```
-tif-finance/
-├── supabase/
-│   └── migrations/
-│       └── 001_initial_schema.sql    ← Run this in Supabase SQL Editor
-├── messages/
-│   ├── en.json                       ← English UI strings
-│   └── zh-TW.json                    ← Traditional Chinese UI strings
-├── src/
-│   ├── app/
-│   │   ├── [locale]/
-│   │   │   ├── (app)/                ← Protected pages (require login)
-│   │   │   │   ├── page.tsx          ← Dashboard
-│   │   │   │   ├── donations/
-│   │   │   │   ├── expenses/
-│   │   │   │   ├── donors/
-│   │   │   │   ├── reports/
-│   │   │   │   └── admin/
-│   │   │   └── login/
-│   │   └── auth/callback/            ← Google OAuth callback
-│   ├── components/
-│   │   ├── nav.tsx                   ← Sidebar navigation
-│   │   └── ui/                       ← shadcn/ui components
-│   └── lib/
-│       └── supabase/
-│           ├── client.ts             ← Browser Supabase client
-│           ├── server.ts             ← Server Supabase client
-│           └── types.ts              ← TypeScript database types
-└── .env.local                        ← Your private keys (never commit this)
-```
+
+If these pass, the local checkout is in a healthy state.
+
+## 6. Deployment Notes
+
+- Vercel should receive the same environment variables as local, with production values.
+- `NEXT_PUBLIC_APP_URL` should point at the live app URL so email links resolve correctly.
+- Expense approval and payment emails depend on the Resend settings plus `TREASURER_EMAIL` and `PAYMENT_NOTIFICATION_EMAILS`.
+
+## 7. Historical Data Imports
+
+Historical CSV import helpers live in `scripts/migrate/`. Use that folder's README for donor, donation, expense, and budget backfills.

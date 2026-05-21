@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
-import { Asap } from "next/font/google";
+import localFont from "next/font/local";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import "../globals.css";
 
-const asap = Asap({ subsets: ["latin"], variable: "--font-sans" });
+const sans = localFont({
+  src: "../fonts/GeistVF.woff",
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "TIF Finance",
@@ -30,7 +34,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale}>
-      <body className={asap.variable}>
+      <body className={sans.variable}>
         <NextIntlClientProvider messages={messages}>
           {children}
         </NextIntlClientProvider>

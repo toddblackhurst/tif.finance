@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TIF Finance
 
-## Getting Started
+Internal finance app for Taichung International Fellowship. The app covers donation entry, donor management, reimbursement workflows, bank-transaction review, reporting, and a public reimbursement submission flow.
 
-First, run the development server:
+## Current Scope
+
+- Authenticated app with locale routes under `src/app/[locale]/(app)`
+- Public routes for the dashboard and reimbursement submit flow
+- Supabase-backed data model for donations, donors, expenses, budgets, bank imports, and audit log
+- Email notifications for expense submission, approval, rejection, payment-needed, payment-complete, and daily summaries
+
+## Main Areas
+
+- `src/app/[locale]/(app)/donations` — donation entry and editing
+- `src/app/[locale]/(app)/donors` — donor list and donor detail pages
+- `src/app/[locale]/(app)/expenses` — draft, submitted, approved, rejected, and paid expense flow
+- `src/app/[locale]/(app)/expense-review` — review queue for categorizing `other` expenses
+- `src/app/[locale]/(app)/bank` — bank transaction batches and matching
+- `src/app/[locale]/(app)/bank/cash-flow` — read-only bank cash-flow view
+- `src/app/[locale]/(app)/reports` — reporting screens
+- `src/app/[locale]/submit` — public reimbursement form
+- `src/app/[locale]/public` — public-facing dashboard view
+
+## Local Setup
+
+1. Use the repo Node version:
+   ```bash
+   nvm use
+   ```
+2. Install dependencies from the lockfile:
+   ```bash
+   npm ci
+   ```
+3. Copy `.env.local.example` to `.env.local` and fill in the required values.
+4. Start the app:
+   ```bash
+   npm run dev
+   ```
+
+## Environment Variables
+
+Required for normal local work:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_APP_URL`
+
+Required for email features:
+
+- `RESEND_API_KEY`
+- `RESEND_FROM`
+- `TREASURER_EMAIL`
+- `PAYMENT_NOTIFICATION_EMAILS`
+- `DAILY_SUMMARY_EMAIL`
+
+## Health Checks
+
+Use these before shipping changes:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
+npm run typecheck
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`npm run check` runs lint plus typecheck.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Supabase Migrations
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Schema changes live in `supabase/migrations/` and should be applied in order:
 
-## Learn More
+- `001_initial_schema.sql`
+- `002_multi_campus_roles.sql`
+- `002b_fix_trigger_column.sql`
+- `003_expense_payment_reference.sql`
+- `004_nullable_expense_fund.sql`
+- `005_expense_payment_info.sql`
+- `006_donation_contact_email.sql`
+- `007_explicit_data_api_grants.sql`
 
-To learn more about Next.js, take a look at the following resources:
+The latest migration adds explicit Data API grants needed for current Supabase public-schema behavior.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The repo is pinned to Node `20.20.0` in `.nvmrc`.
+- The app now uses a bundled local font, so production builds do not depend on fetching Google Fonts.
+- Historical import helpers live in `scripts/migrate/`.

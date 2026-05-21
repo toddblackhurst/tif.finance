@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* TIF Brand: Dark Blue #1b2327 · Cyan #27b7d8 · Font: Asap */
+/* TIF Brand: Dark Blue #1b2327 · Cyan #27b7d8 */
 
 @layer base {
   :root {
@@ -33,6 +33,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Asap', 'Inter', system-ui, sans-serif;
+    font-family: var(--font-sans), "Inter", system-ui, sans-serif;
   }
 }
