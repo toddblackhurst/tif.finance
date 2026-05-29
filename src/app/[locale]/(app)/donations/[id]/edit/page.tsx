@@ -80,6 +80,7 @@ export default async function EditDonationPage({
           funds={funds}
           editId={id}
           returnTo={returnTo}
+          returnFilters={filters}
           initialValues={{
             gift_date: donation.gift_date,
             amount: donation.amount,
