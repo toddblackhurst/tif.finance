@@ -5,6 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/filter-bar";
 import { SummerDeleteButton } from "@/components/summer-delete-button";
+import {
+  DONATION_FILTER_PAYMENT_METHOD_VALUES,
+  buildDonationFilterQueryString,
+  normalizeDonationMethods,
+  normalizeDonationSort,
+  type SearchParamValue,
+} from "@/lib/donation-filters";
 
 interface DonationRow {
   id: string;
@@ -19,22 +26,6 @@ interface DonationRow {
 }
 
 interface CampusRow { id: string; name: string }
-type SearchParamValue = string | string[] | undefined;
-
-const PAYMENT_METHOD_VALUES = ["cash", "card", "bank_transfer", "check", "other"] as const;
-const SORT_VALUES = ["payment_method_asc"] as const;
-
-function normalizeMethods(value: SearchParamValue) {
-  const rawValues = Array.isArray(value) ? value : value ? [value] : [];
-  return rawValues.filter((method, index, allMethods): method is typeof PAYMENT_METHOD_VALUES[number] => (
-    PAYMENT_METHOD_VALUES.includes(method as typeof PAYMENT_METHOD_VALUES[number]) &&
-    allMethods.indexOf(method) === index
-  ));
-}
-
-function normalizeSort(value: string | undefined) {
-  return SORT_VALUES.includes(value as typeof SORT_VALUES[number]) ? value : "";
-}
 
 function parseMonth(m: string): { start: string; end: string } {
   const [y, mo] = m.split("-").map(Number);
@@ -55,9 +46,9 @@ export default async function DonationsPage({
   const t = await getTranslations("donations");
   const supabase = await createClient();
   const sortLabel = locale === "zh-TW" ? "排序" : "Sort";
-  const methodFilters = normalizeMethods(rawMethodFilter);
-  const sort = normalizeSort(rawSort);
-  const paymentMethods = PAYMENT_METHOD_VALUES.map((method) => ({
+  const methodFilters = normalizeDonationMethods(rawMethodFilter);
+  const sort = normalizeDonationSort(rawSort);
+  const paymentMethods = DONATION_FILTER_PAYMENT_METHOD_VALUES.map((method) => ({
     value: method,
     label: t(`paymentMethods.${method}`),
   }));
@@ -109,6 +100,14 @@ export default async function DonationsPage({
 
   const totalAmount = donations.reduce((s, d) => s + d.amount, 0);
   const hasFilter = !!(campusFilter || monthFilter || methodFilters.length || sort);
+  const donationQueryString = buildDonationFilterQueryString({
+    campus: campusFilter,
+    month: monthFilter,
+    method: methodFilters,
+    sort,
+  });
+  const newDonationHref = `/${locale}/donations/new${donationQueryString ? `?${donationQueryString}` : ""}`;
+  const donationEditQuery = donationQueryString ? `?${donationQueryString}` : "";
 
   return (
     <div className="space-y-4">
@@ -122,7 +121,7 @@ export default async function DonationsPage({
             ↓ Export CSV
           </a>
           <Button asChild>
-            <Link href={`/${locale}/donations/new`}>{t("newDonation")}</Link>
+            <Link href={newDonationHref}>{t("newDonation")}</Link>
           </Button>
         </div>
       </div>
@@ -184,7 +183,7 @@ export default async function DonationsPage({
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-2">
                     <Link
-                      href={`/${locale}/donations/${d.id}/edit`}
+                      href={`/${locale}/donations/${d.id}/edit${donationEditQuery}`}
                       className="text-xs text-blue-600 hover:underline"
                     >
                       Edit

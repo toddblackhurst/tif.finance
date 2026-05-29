@@ -17,6 +17,7 @@ interface DonationFormProps {
   campuses: Campus[];
   funds: Fund[];
   editId?: string;
+  returnTo?: string;
   initialValues?: {
     gift_date: string;
     amount: number;
@@ -43,7 +44,7 @@ function SubmitButton({ label }: { label: string }) {
 const INITIAL_STATE: DonationFormState = {};
 const DONATION_PAYMENT_METHODS = ["card", "bank_transfer", "cash"] as const;
 
-export function DonationForm({ locale, campuses, funds, editId, initialValues }: DonationFormProps) {
+export function DonationForm({ locale, campuses, funds, editId, returnTo, initialValues }: DonationFormProps) {
   const t = useTranslations("donations");
   const action = editId
     ? updateDonation.bind(null, locale, editId)
@@ -52,6 +53,8 @@ export function DonationForm({ locale, campuses, funds, editId, initialValues }:
 
   return (
     <form action={formAction} className="space-y-6 max-w-2xl">
+      {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
+
       {state.error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {state.error}
@@ -158,7 +161,7 @@ export function DonationForm({ locale, campuses, funds, editId, initialValues }:
       <div className="flex gap-3 pt-2">
         <SubmitButton label={t("save")} />
         <Button type="button" variant="outline" asChild>
-          <a href={`/${locale}/donations`}>{t("cancel")}</a>
+          <a href={returnTo ?? `/${locale}/donations`}>{t("cancel")}</a>
         </Button>
       </div>
     </form>
