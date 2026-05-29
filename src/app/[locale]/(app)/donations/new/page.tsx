@@ -49,7 +49,13 @@ export default async function NewDonationPage({
       </div>
 
       <div className="bg-white rounded-lg border p-6">
-        <DonationForm locale={locale} campuses={campuses} funds={funds} returnTo={returnTo} />
+        <DonationForm
+          locale={locale}
+          campuses={campuses}
+          funds={funds}
+          returnTo={returnTo}
+          returnFilters={filters}
+        />
       </div>
     </div>
   );

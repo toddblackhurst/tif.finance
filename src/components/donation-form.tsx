@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DonorSearch } from "@/components/donor-search";
 import { createDonation, updateDonation, type DonationFormState } from "@/app/actions/donations";
+import {
+  normalizeDonationMethods,
+  normalizeDonationSort,
+  type DonationFilterSearchParams,
+} from "@/lib/donation-filters";
 
 interface Campus { id: string; name: string; }
 interface Fund { id: string; name: string; }
@@ -18,6 +23,7 @@ interface DonationFormProps {
   funds: Fund[];
   editId?: string;
   returnTo?: string;
+  returnFilters?: DonationFilterSearchParams;
   initialValues?: {
     gift_date: string;
     amount: number;
@@ -44,16 +50,24 @@ function SubmitButton({ label }: { label: string }) {
 const INITIAL_STATE: DonationFormState = {};
 const DONATION_PAYMENT_METHODS = ["card", "bank_transfer", "cash"] as const;
 
-export function DonationForm({ locale, campuses, funds, editId, returnTo, initialValues }: DonationFormProps) {
+export function DonationForm({ locale, campuses, funds, editId, returnTo, returnFilters, initialValues }: DonationFormProps) {
   const t = useTranslations("donations");
   const action = editId
     ? updateDonation.bind(null, locale, editId)
     : createDonation.bind(null, locale);
   const [state, formAction] = useFormState(action, INITIAL_STATE);
+  const returnMethods = normalizeDonationMethods(returnFilters?.method);
+  const returnSort = normalizeDonationSort(returnFilters?.sort);
 
   return (
     <form action={formAction} className="space-y-6 max-w-2xl">
       {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
+      {returnFilters?.campus && <input type="hidden" name="return_campus" value={returnFilters.campus} />}
+      {returnFilters?.month && <input type="hidden" name="return_month" value={returnFilters.month} />}
+      {returnMethods.map((method) => (
+        <input key={method} type="hidden" name="return_method" value={method} />
+      ))}
+      {returnSort && <input type="hidden" name="return_sort" value={returnSort} />}
 
       {state.error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">

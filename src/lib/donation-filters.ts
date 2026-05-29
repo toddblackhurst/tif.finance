@@ -44,21 +44,42 @@ export function buildDonationListPath(locale: string, searchParams: DonationFilt
   return `/${locale}/donations${query ? `?${query}` : ""}`;
 }
 
-export function safeDonationReturnPath(locale: string, rawReturnTo: unknown) {
-  if (typeof rawReturnTo !== "string" || !rawReturnTo) {
-    return `/${locale}/donations`;
-  }
-
+export function safeDonationReturnPath(
+  locale: string,
+  rawReturnTo: unknown,
+  fallbackFilters: DonationFilterSearchParams = {}
+) {
+  const fallbackPath = buildDonationListPath(locale, fallbackFilters);
   try {
-    const url = rawReturnTo.startsWith("/")
-      ? new URL(rawReturnTo, "https://local.tif")
-      : new URL(rawReturnTo);
-    const path = `${url.pathname}${url.search}`;
+    const safeReturnTo = typeof rawReturnTo === "string" && rawReturnTo ? rawReturnTo : fallbackPath;
+    const url = safeReturnTo.startsWith("/")
+      ? new URL(safeReturnTo, "https://local.tif")
+      : new URL(safeReturnTo);
 
-    return path === `/${locale}/donations` || path.startsWith(`/${locale}/donations?`)
-      ? path
-      : `/${locale}/donations`;
+    if (url.pathname !== `/${locale}/donations`) {
+      return fallbackPath;
+    }
+
+    if (!url.searchParams.has("campus") && fallbackFilters.campus) {
+      url.searchParams.set("campus", fallbackFilters.campus);
+    }
+    if (!url.searchParams.has("month") && fallbackFilters.month) {
+      url.searchParams.set("month", fallbackFilters.month);
+    }
+    if (!url.searchParams.has("method")) {
+      normalizeDonationMethods(fallbackFilters.method).forEach((method) => {
+        url.searchParams.append("method", method);
+      });
+    }
+
+    const normalizedSort = normalizeDonationSort(fallbackFilters.sort);
+    if (!url.searchParams.has("sort") && normalizedSort) {
+      url.searchParams.set("sort", normalizedSort);
+    }
+
+    const query = url.searchParams.toString();
+    return `${url.pathname}${query ? `?${query}` : ""}`;
   } catch {
-    return `/${locale}/donations`;
+    return fallbackPath;
   }
 }

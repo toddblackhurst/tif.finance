@@ -10,6 +10,15 @@ export interface DonationFormState {
   success?: boolean;
 }
 
+function formDataString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" && value ? value : undefined;
+}
+
+function formDataMonthFallback(formData: FormData, giftDate: string) {
+  return formDataString(formData, "return_month") ?? (/^\d{4}-\d{2}/.test(giftDate) ? giftDate.slice(0, 7) : undefined);
+}
+
 export async function createDonation(
   locale: string,
   _prev: DonationFormState,
@@ -29,7 +38,12 @@ export async function createDonation(
   const contactEmail = ((formData.get("contact_email") as string) || "").trim().toLowerCase() || null;
   const depositReference = (formData.get("deposit_reference") as string) || null;
   const notes = (formData.get("notes") as string) || null;
-  const returnPath = safeDonationReturnPath(locale, formData.get("return_to"));
+  const returnPath = safeDonationReturnPath(locale, formData.get("return_to"), {
+    campus: formDataString(formData, "return_campus"),
+    month: formDataMonthFallback(formData, giftDate),
+    method: formData.getAll("return_method").filter((value): value is string => typeof value === "string"),
+    sort: formDataString(formData, "return_sort"),
+  });
 
   if (!giftDate || !amount || !campusId || !fundId || !paymentMethod) {
     return { error: "Please fill in all required fields." };
@@ -102,7 +116,12 @@ export async function updateDonation(
   const contactEmail = ((formData.get("contact_email") as string) || "").trim().toLowerCase() || null;
   const depositReference = (formData.get("deposit_reference") as string) || null;
   const notes = (formData.get("notes") as string) || null;
-  const returnPath = safeDonationReturnPath(locale, formData.get("return_to"));
+  const returnPath = safeDonationReturnPath(locale, formData.get("return_to"), {
+    campus: formDataString(formData, "return_campus"),
+    month: formDataMonthFallback(formData, giftDate),
+    method: formData.getAll("return_method").filter((value): value is string => typeof value === "string"),
+    sort: formDataString(formData, "return_sort"),
+  });
 
   if (!giftDate || !amount || !campusId || !fundId || !paymentMethod)
     return { error: "Please fill in all required fields." };
