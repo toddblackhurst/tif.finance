@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { safeDonationReturnPath } from "@/lib/donation-filters";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -28,6 +29,7 @@ export async function createDonation(
   const contactEmail = ((formData.get("contact_email") as string) || "").trim().toLowerCase() || null;
   const depositReference = (formData.get("deposit_reference") as string) || null;
   const notes = (formData.get("notes") as string) || null;
+  const returnPath = safeDonationReturnPath(locale, formData.get("return_to"));
 
   if (!giftDate || !amount || !campusId || !fundId || !paymentMethod) {
     return { error: "Please fill in all required fields." };
@@ -72,7 +74,7 @@ export async function createDonation(
   });
 
   revalidatePath(`/${locale}/donations`);
-  redirect(`/${locale}/donations`);
+  redirect(returnPath);
 }
 
 export async function updateDonation(
@@ -100,6 +102,7 @@ export async function updateDonation(
   const contactEmail = ((formData.get("contact_email") as string) || "").trim().toLowerCase() || null;
   const depositReference = (formData.get("deposit_reference") as string) || null;
   const notes = (formData.get("notes") as string) || null;
+  const returnPath = safeDonationReturnPath(locale, formData.get("return_to"));
 
   if (!giftDate || !amount || !campusId || !fundId || !paymentMethod)
     return { error: "Please fill in all required fields." };
@@ -124,7 +127,7 @@ export async function updateDonation(
   });
 
   revalidatePath(`/${locale}/donations`);
-  redirect(`/${locale}/donations`);
+  redirect(returnPath);
 }
 
 export async function deleteDonation(

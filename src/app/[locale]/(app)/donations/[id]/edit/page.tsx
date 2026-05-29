@@ -3,18 +3,23 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { DonationForm } from "@/components/donation-form";
+import { buildDonationListPath, type DonationFilterSearchParams } from "@/lib/donation-filters";
 
 interface CampusRow { id: string; name: string }
 interface FundRow { id: string; name: string }
 
 export default async function EditDonationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<DonationFilterSearchParams>;
 }) {
   const { locale, id } = await params;
+  const filters = await searchParams;
   const t = await getTranslations("donations");
   const supabase = await createClient();
+  const returnTo = buildDonationListPath(locale, filters);
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
@@ -61,7 +66,7 @@ export default async function EditDonationPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Link href={`/${locale}/donations`} className="text-sm text-gray-500 hover:text-gray-700">
+        <Link href={returnTo} className="text-sm text-gray-500 hover:text-gray-700">
           ← {t("title")}
         </Link>
         <span className="text-gray-300">/</span>
@@ -74,6 +79,7 @@ export default async function EditDonationPage({
           campuses={campuses}
           funds={funds}
           editId={id}
+          returnTo={returnTo}
           initialValues={{
             gift_date: donation.gift_date,
             amount: donation.amount,
