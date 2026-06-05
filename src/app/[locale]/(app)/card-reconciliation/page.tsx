@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { CardReconciliationInstructions } from "@/components/card-reconciliation-instructions";
+import { EcpayUploadForm } from "@/components/ecpay-upload-form";
 import {
   hasEcpaySource,
   inferEcpayClassification,
@@ -273,6 +274,16 @@ export default async function CardReconciliationPage({
           </p>
         </div>
       )}
+
+      <section className="rounded-lg border bg-white p-6">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold">Import ECPay Card Statement</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Upload the ECPay credit-card CSV here. Imported rows will appear below for donor and classification review.
+          </p>
+        </div>
+        <EcpayUploadForm locale={locale} />
+      </section>
 
       <SectionTable
         locale={locale}
