@@ -22,6 +22,8 @@ export interface EcpayParseResult {
 }
 
 const DATE_COLUMNS = [
+  "訂單日期",
+  "付款狀態",
   "paymentdate",
   "payment date",
   "paidat",
@@ -34,6 +36,7 @@ const DATE_COLUMNS = [
 ];
 
 const AMOUNT_COLUMNS = [
+  "交易金額",
   "tradeamt",
   "trade amount",
   "amount",
@@ -42,8 +45,12 @@ const AMOUNT_COLUMNS = [
 ];
 
 const MERCHANT_ORDER_COLUMNS = [
+  "廠商訂單編號",
+  "綠界訂單編號",
   "merchanttradeno",
   "merchant trade no",
+  "ecpay trade no",
+  "green world trade no",
   "merchant_order_no",
   "merchant order no",
   "merchant order",
@@ -52,6 +59,7 @@ const MERCHANT_ORDER_COLUMNS = [
 ];
 
 const TRANSACTION_COLUMNS = [
+  "綠界訂單編號",
   "tradeno",
   "trade no",
   "source transaction",
@@ -60,15 +68,18 @@ const TRANSACTION_COLUMNS = [
 ];
 
 const ORDER_INFO_COLUMNS = [
+  "備註",
+  "廠商備註",
   "orderinfo",
   "order info",
   "customfield1",
   "custom field1",
   "custom field 1",
-  "備註",
 ];
 
 const DONOR_COLUMNS = [
+  "付款人姓名",
+  "收件人姓名",
   "cardholder",
   "card holder",
   "donor",
@@ -78,6 +89,8 @@ const DONOR_COLUMNS = [
 ];
 
 const PHONE_COLUMNS = [
+  "付款人手機",
+  "收件人手機",
   "phonenumber",
   "phone number",
   "phone",
@@ -85,12 +98,16 @@ const PHONE_COLUMNS = [
 ];
 
 const EMAIL_COLUMNS = [
+  "付款人email",
+  "收件人email",
   "email",
   "e-mail",
   "mail",
 ];
 
 const TRADE_DESC_COLUMNS = [
+  "商品名稱",
+  "交易描述",
   "tradedesc",
   "trade desc",
   "trade description",
@@ -98,9 +115,11 @@ const TRADE_DESC_COLUMNS = [
   "品名",
 ];
 
-const AUTH_COLUMNS = ["authcode", "auth code", "authnumber", "auth number", "授權碼"];
+const PAYMENT_METHOD_COLUMNS = ["付款方式", "payment method", "paymentmethod"];
+
+const AUTH_COLUMNS = ["信用卡授權單號", "authcode", "auth code", "authnumber", "auth number", "授權碼"];
 const BANK_COLUMNS = ["gwsr", "issuingbank", "issuing bank", "bank", "銀行"];
-const RESPONSE_COLUMNS = ["rtncode", "rtn code", "responsecode", "response code", "回應碼"];
+const RESPONSE_COLUMNS = ["付款狀態", "rtncode", "rtn code", "responsecode", "response code", "回應碼"];
 
 function normalizeHeader(value: string): string {
   return value.trim().replace(/^\uFEFF/, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").toLowerCase();
@@ -115,17 +134,28 @@ function findValue(row: Record<string, string>, aliases: string[]): string {
   const compactAliases = aliases.map(compact);
   for (const [key, value] of Object.entries(row)) {
     const normalizedKey = normalizeHeader(key);
-    if (normalizedAliases.includes(normalizedKey)) return cleanCell(value);
+    if (normalizedAliases.includes(normalizedKey)) {
+      const cleaned = cleanCell(value);
+      if (cleaned) return cleaned;
+    }
   }
   for (const [key, value] of Object.entries(row)) {
     const compactKey = compact(key);
-    if (compactAliases.includes(compactKey)) return cleanCell(value);
+    if (compactAliases.includes(compactKey)) {
+      const cleaned = cleanCell(value);
+      if (cleaned) return cleaned;
+    }
   }
   return "";
 }
 
 function cleanCell(value: string | undefined): string {
-  return (value ?? "").trim().replace(/^\uFEFF/, "");
+  let text = (value ?? "").trim().replace(/^\uFEFF/, "");
+  if (text.startsWith("=")) text = text.slice(1).trim();
+  if (text.length >= 2 && text.startsWith('"') && text.endsWith('"')) {
+    text = text.slice(1, -1).replace(/""/g, '"').trim();
+  }
+  return text === "-" ? "" : text;
 }
 
 function parseCSVLine(line: string): string[] {
@@ -220,11 +250,16 @@ export function parseEcpayCSV(text: string): EcpayParseResult {
     const rawData = Object.fromEntries(headers.map((header, cellIndex) => [header, cleanCell(cells[cellIndex])]));
     const orderInfo = parseOrderInfo(findValue(rawData, ORDER_INFO_COLUMNS));
 
+    const paymentMethod = findValue(rawData, PAYMENT_METHOD_COLUMNS);
     const merchantOrder = findValue(rawData, MERCHANT_ORDER_COLUMNS);
     const giftDate = parseDate(findValue(rawData, DATE_COLUMNS));
     const amount = parseAmount(findValue(rawData, AMOUNT_COLUMNS));
     const sourceTradeDesc = findValue(rawData, TRADE_DESC_COLUMNS) || orderInfo.tradeDesc;
 
+    if (paymentMethod && !/card|信用卡/i.test(paymentMethod)) {
+      skipped.push(`Row ${index + 1}: skipped non-card payment method.`);
+      continue;
+    }
     if (!merchantOrder) {
       skipped.push(`Row ${index + 1}: missing merchant order number.`);
       continue;

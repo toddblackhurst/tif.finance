@@ -62,6 +62,21 @@ function monthFromRows(rows: EcpayImportRow[]): string {
   return rows[0]?.giftDate.slice(0, 7) ?? new Date().toISOString().slice(0, 7);
 }
 
+async function decodeEcpayFile(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const encodings = ["utf-8", "big5"];
+
+  for (const encoding of encodings) {
+    try {
+      return new TextDecoder(encoding, { fatal: true }).decode(buffer);
+    } catch {
+      // Try the next common ECPay export encoding.
+    }
+  }
+
+  return new TextDecoder("utf-8").decode(buffer);
+}
+
 export async function uploadEcpayCSV(
   locale: string,
   _prevState: EcpayUploadState | null,
@@ -84,7 +99,7 @@ export async function uploadEcpayCSV(
   const file = formData.get("csv_file") as File | null;
   if (!file || file.size === 0) return { error: "Please select an ECPay CSV file." };
 
-  const { rows, skipped } = parseEcpayCSV(await file.text());
+  const { rows, skipped } = parseEcpayCSV(await decodeEcpayFile(file));
   if (rows.length === 0) return { error: skipped[0] ?? "No valid ECPay rows found." };
 
   const [campusesResult, fundsResult, donorsResult, existingResult] = await Promise.all([
