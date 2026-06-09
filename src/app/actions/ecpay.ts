@@ -55,7 +55,14 @@ function singleDonorMatch(row: EcpayImportRow, donors: DonorRow[]): { donorId: s
 }
 
 function lookupId(rows: LookupRow[], name: string): string | null {
-  return rows.find((row) => row.name.trim().toLowerCase() === name.trim().toLowerCase())?.id ?? null;
+  const target = normalizeName(name);
+  const exact = rows.find((row) => normalizeName(row.name) === target);
+  if (exact) return exact.id;
+
+  return rows.find((row) => {
+    const candidate = normalizeName(row.name);
+    return candidate.startsWith(`${target} `) || target.startsWith(`${candidate} `);
+  })?.id ?? null;
 }
 
 function monthFromRows(rows: EcpayImportRow[]): string {
