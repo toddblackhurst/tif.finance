@@ -20,7 +20,7 @@ interface ExpenseRow {
 
 interface CampusRow { id: string; name: string }
 const PAYMENT_METHOD_VALUES = ["cash", "card", "bank_transfer", "check", "other"] as const;
-const SORT_VALUES = ["payment_method_asc"] as const;
+const SORT_VALUES = ["expense_date_desc", "expense_date_asc", "payment_method_asc"] as const;
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-gray-100 text-gray-700",
@@ -56,6 +56,8 @@ export default async function ExpensesPage({
   const donationT = await getTranslations("donations");
   const supabase = await createClient();
   const sortLabel = locale === "zh-TW" ? "排序" : "Sort";
+  const newestFirstLabel = locale === "zh-TW" ? "新到舊" : "Newest First";
+  const oldestFirstLabel = locale === "zh-TW" ? "舊到新" : "Oldest First";
   const allPaymentMethodsLabel = locale === "zh-TW" ? "所有付款方式" : "All Payment Methods";
   const methodFilter = PAYMENT_METHOD_VALUES.includes(rawMethodFilter as typeof PAYMENT_METHOD_VALUES[number])
     ? rawMethodFilter as typeof PAYMENT_METHOD_VALUES[number]
@@ -69,6 +71,8 @@ export default async function ExpensesPage({
     paymentMethods.map((method) => [method.value, method.label])
   );
   const sortOptions = [
+    { value: "expense_date_desc", label: `${t("expenseDate")} (${newestFirstLabel})` },
+    { value: "expense_date_asc", label: `${t("expenseDate")} (${oldestFirstLabel})` },
     { value: "payment_method_asc", label: `${t("paymentMethod")} (A-Z)` },
   ];
 
@@ -98,12 +102,18 @@ export default async function ExpensesPage({
     query = query.gte("expense_date", start).lt("expense_date", end);
   }
   if (methodFilter) query = query.eq("payment_method", methodFilter);
-  if (sort === "payment_method_asc") {
+  if (sort === "expense_date_asc") {
+    query = query
+      .order("expense_date", { ascending: true })
+      .order("created_at", { ascending: true });
+  } else if (sort === "payment_method_asc") {
     query = query
       .order("payment_method", { ascending: true, nullsFirst: false })
       .order("expense_date", { ascending: false });
   } else {
-    query = query.order("expense_date", { ascending: false });
+    query = query
+      .order("expense_date", { ascending: false })
+      .order("created_at", { ascending: false });
   }
 
   const { data: rawData } = await query;

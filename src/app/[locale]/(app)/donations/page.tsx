@@ -46,6 +46,8 @@ export default async function DonationsPage({
   const t = await getTranslations("donations");
   const supabase = await createClient();
   const sortLabel = locale === "zh-TW" ? "排序" : "Sort";
+  const newestFirstLabel = locale === "zh-TW" ? "新到舊" : "Newest First";
+  const oldestFirstLabel = locale === "zh-TW" ? "舊到新" : "Oldest First";
   const methodFilters = normalizeDonationMethods(rawMethodFilter);
   const sort = normalizeDonationSort(rawSort);
   const paymentMethods = DONATION_FILTER_PAYMENT_METHOD_VALUES.map((method) => ({
@@ -56,6 +58,8 @@ export default async function DonationsPage({
     paymentMethods.map((method) => [method.value, method.label])
   );
   const sortOptions = [
+    { value: "gift_date_desc", label: `${t("giftDate")} (${newestFirstLabel})` },
+    { value: "gift_date_asc", label: `${t("giftDate")} (${oldestFirstLabel})` },
     { value: "payment_method_asc", label: `${t("paymentMethod")} (A-Z)` },
   ];
   const { data: { user } } = await supabase.auth.getUser();
@@ -87,12 +91,18 @@ export default async function DonationsPage({
     query = query.gte("gift_date", start).lt("gift_date", end);
   }
   if (methodFilters.length > 0) query = query.in("payment_method", methodFilters);
-  if (sort === "payment_method_asc") {
+  if (sort === "gift_date_asc") {
+    query = query
+      .order("gift_date", { ascending: true })
+      .order("created_at", { ascending: true });
+  } else if (sort === "payment_method_asc") {
     query = query
       .order("payment_method", { ascending: true })
       .order("gift_date", { ascending: false });
   } else {
-    query = query.order("gift_date", { ascending: false });
+    query = query
+      .order("gift_date", { ascending: false })
+      .order("created_at", { ascending: false });
   }
 
   const { data: rawData } = await query;

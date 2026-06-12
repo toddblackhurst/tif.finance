@@ -8,7 +8,7 @@ export interface DonationFilterSearchParams {
 }
 
 export const DONATION_FILTER_PAYMENT_METHOD_VALUES = ["cash", "card", "bank_transfer", "check", "other"] as const;
-export const DONATION_FILTER_SORT_VALUES = ["payment_method_asc"] as const;
+export const DONATION_FILTER_SORT_VALUES = ["gift_date_desc", "gift_date_asc", "payment_method_asc"] as const;
 
 export function normalizeDonationMethods(value: SearchParamValue) {
   const rawValues = Array.isArray(value) ? value : value ? [value] : [];
