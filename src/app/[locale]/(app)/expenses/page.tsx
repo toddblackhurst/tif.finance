@@ -8,6 +8,7 @@ import { SummerDeleteButton } from "@/components/summer-delete-button";
 
 interface ExpenseRow {
   id: string;
+  serial_number: string | null;
   expense_date: string;
   description: string;
   amount: number;
@@ -88,7 +89,7 @@ export default async function ExpensesPage({
   let query = supabase
     .from("expenses")
     .select(`
-      id, expense_date, description, amount, status, category, payment_method,
+      id, serial_number, expense_date, description, amount, status, category, payment_method,
       campuses ( name ),
       funds ( name )
     `)
@@ -174,6 +175,7 @@ export default async function ExpensesPage({
           <thead className="bg-gray-50 text-gray-600">
             <tr>
               <th className="px-4 py-3 text-left">{t("expenseDate")}</th>
+              <th className="px-4 py-3 text-left">{t("serialNumber")}</th>
               <th className="px-4 py-3 text-left">{t("description")}</th>
               <th className="px-4 py-3 text-left">{t("campus")}</th>
               <th className="px-4 py-3 text-left">{t("category")}</th>
@@ -186,7 +188,7 @@ export default async function ExpensesPage({
           <tbody className="divide-y">
             {expenses.length === 0 && (
               <tr>
-                <td colSpan={canSubmit ? 8 : 7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={canSubmit ? 9 : 8} className="px-4 py-8 text-center text-gray-400">
                   No expenses found.
                 </td>
               </tr>
@@ -197,6 +199,9 @@ export default async function ExpensesPage({
                   <Link href={`/${locale}/expenses/${e.id}`} className="block">
                     {e.expense_date}
                   </Link>
+                </td>
+                <td className="px-4 py-3 font-mono text-xs font-semibold uppercase text-gray-700">
+                  {e.serial_number ?? "-"}
                 </td>
                 <td className="px-4 py-3">
                   <Link href={`/${locale}/expenses/${e.id}`} className="block font-medium hover:text-blue-600">
@@ -231,7 +236,7 @@ export default async function ExpensesPage({
           {expenses.length > 0 && (
             <tfoot className="bg-gray-50 font-semibold text-sm border-t">
               <tr>
-                <td colSpan={4} className="px-4 py-2 text-gray-600">
+                <td colSpan={5} className="px-4 py-2 text-gray-600">
                   Total ({expenses.length})
                 </td>
                 <td className="px-4 py-2 text-right font-mono">

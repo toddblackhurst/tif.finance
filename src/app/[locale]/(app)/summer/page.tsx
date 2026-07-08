@@ -17,6 +17,7 @@ interface BankLine {
 
 interface DonationLine {
   id: string;
+  serial_number: string | null;
   gift_date: string;
   amount: number;
   payment_method: string | null;
@@ -28,6 +29,7 @@ interface DonationLine {
 
 interface ExpenseLine {
   id: string;
+  serial_number: string | null;
   expense_date: string;
   description: string;
   amount: number;
@@ -42,6 +44,7 @@ interface SummerRow {
   id: string;
   recordId: string;
   date: string;
+  serialNumber: string | null;
   source: "bank" | "cash" | "bank_transfer";
   flow: "income" | "expense";
   label: string;
@@ -191,7 +194,7 @@ export default async function SummerPage({
   let donationQuery = supabase
     .from("donations")
     .select(`
-      id, gift_date, amount, payment_method, notes,
+      id, serial_number, gift_date, amount, payment_method, notes,
       donors ( display_name ),
       campuses ( name ),
       funds ( name )
@@ -210,7 +213,7 @@ export default async function SummerPage({
   let expenseQuery = supabase
     .from("expenses")
     .select(`
-      id, expense_date, description, amount, payment_method, status, category,
+      id, serial_number, expense_date, description, amount, payment_method, status, category,
       campuses ( name ),
       funds ( name )
     `)
@@ -239,6 +242,7 @@ export default async function SummerPage({
     id: `bank-${line.id}`,
     recordId: line.id,
     date: line.transaction_date,
+    serialNumber: null,
     source: "bank",
     flow: line.amount > 0 ? "income" : "expense",
     label: "Bank",
@@ -254,6 +258,7 @@ export default async function SummerPage({
     id: `donation-${line.id}`,
     recordId: line.id,
     date: line.gift_date,
+    serialNumber: line.serial_number,
     source: line.payment_method === "bank_transfer" ? "bank_transfer" : "cash",
     flow: "income",
     label: line.payment_method === "bank_transfer" ? "Bank Transfer Donation" : "Cash Donation",
@@ -270,6 +275,7 @@ export default async function SummerPage({
     id: `expense-${line.id}`,
     recordId: line.id,
     date: line.expense_date,
+    serialNumber: line.serial_number,
     source: line.payment_method === "bank_transfer" ? "bank_transfer" : "cash",
     flow: "expense",
     label: line.payment_method === "bank_transfer" ? "Bank Transfer Expense" : "Cash Expense",
@@ -378,14 +384,64 @@ export default async function SummerPage({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-white">
+      <div className="space-y-3 md:hidden">
+        {rows.length === 0 && (
+          <div className="rounded-lg border bg-white px-4 py-10 text-center text-sm text-gray-500">
+            No Summer transactions found for the current filters.
+          </div>
+        )}
+        {rows.map((row) => (
+          <div key={row.id} className="rounded-lg border bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                  <span>{row.date}</span>
+                  {row.serialNumber && (
+                    <span className="font-mono font-semibold uppercase text-gray-800">{row.serialNumber}</span>
+                  )}
+                </div>
+                {row.href ? (
+                  <Link href={row.href} className="mt-1 block text-base font-semibold text-gray-900 hover:text-blue-600">
+                    {row.description}
+                  </Link>
+                ) : (
+                  <p className="mt-1 text-base font-semibold text-gray-900">{row.description}</p>
+                )}
+              </div>
+              <p className={`shrink-0 font-mono text-sm font-semibold ${row.flow === "income" ? "text-green-700" : "text-red-700"}`}>
+                {row.flow === "income" ? "+" : "-"}{fmt(row.amount)}
+              </p>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${sourceBadge(row.source)}`}>
+                {sourceLabel(row.source)}
+              </span>
+              <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${flowBadge(row.flow)}`}>
+                {row.label}
+              </span>
+            </div>
+            <div className="mt-3 space-y-1 text-sm text-gray-600">
+              <p>{row.reference}</p>
+              <p className="capitalize text-gray-500">{row.detail}</p>
+            </div>
+            {canDelete && (
+              <div className="mt-3 flex justify-end">
+                <SummerDeleteButton locale={locale} recordId={row.recordId} kind={row.deleteKind} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-lg border bg-white md:block">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600">
             <tr>
               <th className="px-4 py-3 text-left">Date</th>
+              <th className="px-4 py-3 text-left">Serial #</th>
+              <th className="px-4 py-3 text-left">Description</th>
               <th className="px-4 py-3 text-left">Source</th>
               <th className="px-4 py-3 text-left">Type</th>
-              <th className="px-4 py-3 text-left">Description</th>
               <th className="px-4 py-3 text-left">Reference</th>
               <th className="px-4 py-3 text-left">Detail</th>
               <th className="px-4 py-3 text-right">Income</th>
@@ -396,7 +452,7 @@ export default async function SummerPage({
           <tbody className="divide-y">
             {rows.length === 0 && (
               <tr>
-                <td colSpan={canDelete ? 9 : 8} className="px-4 py-10 text-center text-gray-500">
+                <td colSpan={canDelete ? 10 : 9} className="px-4 py-10 text-center text-gray-500">
                   No Summer transactions found for the current filters.
                 </td>
               </tr>
@@ -404,15 +460,8 @@ export default async function SummerPage({
             {rows.map((row) => (
               <tr key={row.id} className="hover:bg-gray-50">
                 <td className="whitespace-nowrap px-4 py-3">{row.date}</td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${sourceBadge(row.source)}`}>
-                    {sourceLabel(row.source)}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${flowBadge(row.flow)}`}>
-                    {row.label}
-                  </span>
+                <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold uppercase text-gray-700">
+                  {row.serialNumber ?? "-"}
                 </td>
                 <td className="px-4 py-3">
                   {row.href ? (
@@ -422,6 +471,16 @@ export default async function SummerPage({
                   ) : (
                     row.description
                   )}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${sourceBadge(row.source)}`}>
+                    {sourceLabel(row.source)}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${flowBadge(row.flow)}`}>
+                    {row.label}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-gray-600">{row.reference}</td>
                 <td className="px-4 py-3 capitalize text-gray-500">{row.detail}</td>

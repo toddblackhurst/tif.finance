@@ -6,6 +6,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json } | 
 export type UserRole = "admin" | "campus-finance" | "viewer";
 export type PaymentMethod = "cash" | "card" | "bank_transfer" | "check" | "other";
 export type ExpenseStatus = "draft" | "submitted" | "approved" | "rejected" | "paid";
+export type ExpensePaymentType = "reimbursement" | "petty_cash" | "mobile_transfer";
 export type DonorType = "individual" | "household" | "business" | "anonymous";
 export type MatchStatus = "unmatched" | "matched" | "ignored";
 export type AuditAction = "create" | "update" | "delete" | "restore";
@@ -78,6 +79,7 @@ export interface Database {
         Row: {
           id: string;
           donor_id: string | null;
+          serial_number: string | null;
           gift_date: string;
           amount: number;
           campus_id: string;
@@ -101,6 +103,7 @@ export interface Database {
         Row: {
           id: string;
           submitter_id: string;
+          serial_number: string | null;
           description: string;
           category: string;
           expense_date: string;
@@ -118,7 +121,7 @@ export interface Database {
           reconciliation_ref: string | null;
           receipt_url: string | null;
           notes: string | null;
-          payment_type: "reimbursement" | "petty_cash" | null;
+          payment_type: ExpensePaymentType | null;
           bank_code: string | null;
           bank_account_number: string | null;
           created_at: string;

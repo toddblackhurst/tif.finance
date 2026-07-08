@@ -50,11 +50,14 @@ Apply the SQL files in `supabase/migrations/` in filename order:
 6. `005_expense_payment_info.sql`
 7. `006_donation_contact_email.sql`
 8. `007_explicit_data_api_grants.sql`
+9. `008_income_funds.sql`
+10. `009_serial_numbers_and_mobile_transfer.sql`
 
 Important:
 
 - `006_donation_contact_email.sql` adds the optional donation contact email field used by the current donation flow and export.
 - `007_explicit_data_api_grants.sql` hardens Data API access for current Supabase behavior and should be applied for authenticated app access plus public reimbursement submissions.
+- `009_serial_numbers_and_mobile_transfer.sql` adds serial numbers for donations/expenses and allows mobile-transfer expenses. Apply it before deploying app code that selects `serial_number` or writes `mobile_transfer`.
 
 ## 3. Auth Setup
 

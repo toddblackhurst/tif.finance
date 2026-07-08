@@ -15,6 +15,7 @@ import {
 
 interface DonationRow {
   id: string;
+  serial_number: string | null;
   gift_date: string;
   amount: number;
   payment_method: string;
@@ -77,7 +78,7 @@ export default async function DonationsPage({
   let query = supabase
     .from("donations")
     .select(`
-      id, gift_date, amount, payment_method, contact_email, notes,
+      id, serial_number, gift_date, amount, payment_method, contact_email, notes,
       donors ( display_name, email ),
       campuses ( name ),
       funds ( name )
@@ -159,6 +160,7 @@ export default async function DonationsPage({
           <thead className="bg-gray-50 text-gray-600">
             <tr>
               <th className="px-4 py-3 text-left">{t("giftDate")}</th>
+              <th className="px-4 py-3 text-left">{t("serialNumber")}</th>
               <th className="px-4 py-3 text-left">{t("donor")}</th>
               <th className="px-4 py-3 text-left">{t("campus")}</th>
               <th className="px-4 py-3 text-left">{t("fund")}</th>
@@ -170,7 +172,7 @@ export default async function DonationsPage({
           <tbody className="divide-y">
             {donations.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
                   No donations found.
                 </td>
               </tr>
@@ -178,6 +180,7 @@ export default async function DonationsPage({
             {donations.map((d) => (
               <tr key={d.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">{d.gift_date}</td>
+                <td className="px-4 py-3 font-mono text-xs font-semibold uppercase text-gray-700">{d.serial_number ?? "-"}</td>
                 <td className="px-4 py-3">
                   <p>{d.donors?.display_name ?? "—"}</p>
                   {(d.contact_email || d.donors?.email) && (
@@ -213,7 +216,7 @@ export default async function DonationsPage({
           {donations.length > 0 && (
             <tfoot className="bg-gray-50 font-semibold text-sm border-t">
               <tr>
-                <td colSpan={4} className="px-4 py-2 text-gray-600">
+                <td colSpan={5} className="px-4 py-2 text-gray-600">
                   Total ({donations.length})
                 </td>
                 <td className="px-4 py-2 text-right font-mono">

@@ -47,7 +47,7 @@ export default async function EditExpensePage({
     status: string;
     submitter_id: string | null;
     submitter_email: string | null;
-    payment_type: "reimbursement" | "petty_cash" | null;
+    payment_type: "reimbursement" | "petty_cash" | "mobile_transfer" | null;
     bank_code: string | null;
     bank_account_number: string | null;
   };

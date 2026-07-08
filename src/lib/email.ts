@@ -120,6 +120,7 @@ export async function sendExpenseApprovedEmail({
   approverName,
   expenseId,
   locale,
+  paymentComplete = false,
 }: {
   submitterEmail: string;
   submitterName: string;
@@ -128,6 +129,7 @@ export async function sendExpenseApprovedEmail({
   approverName: string;
   expenseId: string | null;
   locale: string;
+  paymentComplete?: boolean;
 }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const link = expenseId ? `${appUrl}/${locale}/expenses/${expenseId}` : null;
@@ -140,7 +142,7 @@ export async function sendExpenseApprovedEmail({
     html: `
       <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#222;">
         <h2 style="color:#15803d;margin-bottom:4px;">Expense Approved ✓</h2>
-        <p style="color:#555;margin-top:0;">Hi ${esc(submitterName)}, your expense has been approved and will be processed for payment soon.</p>
+        <p style="color:#555;margin-top:0;">Hi ${esc(submitterName)}, ${paymentComplete ? "your expense has been approved. No additional payment processing is needed." : "your expense has been approved and will be processed for payment soon."}</p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
           <tr><td style="padding:6px 0;color:#666;width:120px;">Description</td><td><strong>${esc(description)}</strong></td></tr>
           <tr><td style="padding:6px 0;color:#666;">Amount</td><td><strong>${fmt(amount)}</strong></td></tr>

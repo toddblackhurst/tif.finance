@@ -6,6 +6,7 @@ import { ExpenseActionPanel } from "@/components/expense-action-panel";
 
 interface ExpenseDetail {
   id: string;
+  serial_number: string | null;
   description: string;
   category: string;
   expense_date: string;
@@ -19,7 +20,7 @@ interface ExpenseDetail {
   submitter_id: string | null;
   submitter_name: string | null;
   submitter_email: string | null;
-  payment_type: "reimbursement" | "petty_cash" | null;
+  payment_type: "reimbursement" | "petty_cash" | "mobile_transfer" | null;
   bank_code: string | null;
   bank_account_number: string | null;
   campuses: { name: string } | null;
@@ -59,7 +60,7 @@ export default async function ExpenseDetailPage({
   const { data: rawExpense } = await supabase
     .from("expenses")
     .select(`
-      id, description, category, expense_date, amount, status, payment_method,
+      id, serial_number, description, category, expense_date, amount, status, payment_method,
       notes, approval_notes, approved_at, paid_at,
       submitter_id, submitter_name, submitter_email,
       payment_type, bank_code, bank_account_number,
@@ -111,6 +112,10 @@ export default async function ExpenseDetailPage({
           <div>
             <p className="text-gray-500">{t("expenseDate")}</p>
             <p className="font-medium">{expense.expense_date}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">{t("serialNumber")}</p>
+            <p className="font-mono font-semibold uppercase">{expense.serial_number ?? "-"}</p>
           </div>
           <div>
             <p className="text-gray-500">{t("category")}</p>

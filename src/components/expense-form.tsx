@@ -11,7 +11,7 @@ import { createExpense, updateExpense, type ExpenseFormState } from "@/app/actio
 
 interface Campus { id: string; name: string }
 
-type PaymentType = "reimbursement" | "petty_cash";
+type PaymentType = "reimbursement" | "petty_cash" | "mobile_transfer";
 const EXPENSE_PAYMENT_METHODS = ["cash", "card", "bank_transfer", "check", "other"] as const;
 
 export interface BankAccountOption {
@@ -176,8 +176,8 @@ export function ExpenseForm({ locale, campuses, bankAccountOptions = [], editId,
           {t("paymentType")} <span className="text-red-500">*</span>
         </legend>
         <input type="hidden" name="payment_type" value={paymentType} />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {(["reimbursement", "petty_cash"] as const).map((pt) => (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {(["reimbursement", "petty_cash", "mobile_transfer"] as const).map((pt) => (
             <button
               key={pt}
               type="button"

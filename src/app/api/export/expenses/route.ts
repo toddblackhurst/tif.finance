@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("expenses")
     .select(`
-      expense_date, description, category, amount, payment_method, status,
+      expense_date, serial_number, description, category, amount, payment_method, status,
       notes, approval_notes,
       campuses ( name ),
       submitter:user_profiles!submitter_id ( full_name ),
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
   if (error) return new NextResponse(error.message, { status: 500 });
 
   type Row = {
-    expense_date: string; description: string; category: string;
+    expense_date: string; serial_number: string | null; description: string; category: string;
     amount: number; payment_method: string; status: string;
     notes: string | null; approval_notes: string | null;
     campuses: { name: string } | null;
@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
 
   const rows = ((data ?? []) as unknown as Row[]).map((r) => ({
     "Date":            r.expense_date,
+    "Serial #":        r.serial_number ?? "",
     "Description":     r.description,
     "Category":        r.category,
     "Amount (NT$)":    r.amount,

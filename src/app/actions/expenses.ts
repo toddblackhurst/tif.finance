@@ -29,6 +29,11 @@ const EXPENSE_CATEGORIES = [
   "vbs", "worship", "admin", "other",
 ] as const;
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "check", "other"] as const;
+const PAYMENT_TYPES = ["reimbursement", "petty_cash", "mobile_transfer"] as const;
+
+function isPaymentCompleteOnApproval(paymentType: string | null) {
+  return paymentType === "petty_cash" || paymentType === "mobile_transfer";
+}
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -85,7 +90,7 @@ async function getExpenseWithPeople(
   const { data } = await supabase
     .from("expenses")
     .select(`
-      id, description, amount, campus_id, submitter_name, submitter_email,
+      id, description, amount, campus_id, submitter_name, submitter_email, payment_type,
       campuses ( name ),
       submitter:user_profiles!expenses_submitter_id_fkey ( full_name, email ),
       approver:user_profiles!expenses_approver_id_fkey ( full_name, email )
@@ -99,6 +104,7 @@ async function getExpenseWithPeople(
     campus_id: string;
     submitter_name: string | null;
     submitter_email: string | null;
+    payment_type: string | null;
     campuses: { name: string } | null;
     submitter: { full_name: string | null; email: string | null } | null;
     approver: { full_name: string | null; email: string | null } | null;
@@ -291,8 +297,8 @@ export async function updateExpense(
     return { error: "Invalid category." };
   if (!PAYMENT_METHODS.includes(paymentMethod as typeof PAYMENT_METHODS[number]))
     return { error: "Invalid payment method." };
-  if (!paymentType || !["reimbursement", "petty_cash"].includes(paymentType))
-    return { error: "Please indicate whether this is a reimbursement or was paid from petty cash." };
+  if (!PAYMENT_TYPES.includes(paymentType as typeof PAYMENT_TYPES[number]))
+    return { error: "Please indicate how this expense was paid." };
   if (paymentType === "reimbursement" && (!bankCode || !bankAccountNumber))
     return { error: "Please provide your bank code and account number for reimbursement." };
 
@@ -360,8 +366,8 @@ export async function createExpense(
   if (!PAYMENT_METHODS.includes(paymentMethod as typeof PAYMENT_METHODS[number])) {
     return { error: "Invalid payment method." };
   }
-  if (!paymentType || !["reimbursement", "petty_cash"].includes(paymentType)) {
-    return { error: "Please indicate whether this is a reimbursement or was paid from petty cash." };
+  if (!PAYMENT_TYPES.includes(paymentType as typeof PAYMENT_TYPES[number])) {
+    return { error: "Please indicate how this expense was paid." };
   }
   if (paymentType === "reimbursement" && (!bankCode || !bankAccountNumber)) {
     return { error: "Please provide your bank code and account number for reimbursement." };
@@ -486,13 +492,30 @@ export async function approveExpense(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: currentExpense, error: loadError } = await (supabase as any)
+    .from("expenses")
+    .select("id, payment_type")
+    .eq("id", expenseId)
+    .eq("status", "submitted")
+    .is("deleted_at", null)
+    .single() as { data: { id: string; payment_type: string | null } | null; error: { message: string } | null };
+
+  if (loadError) return { error: loadError.message };
+  if (!currentExpense) return { error: "Expense not found or not ready for approval." };
+
+  const finalStatus = isPaymentCompleteOnApproval(currentExpense.payment_type) ? "paid" : "approved";
+  const now = new Date().toISOString();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from("expenses")
     .update({
-      status: "approved",
+      status: finalStatus,
       approver_id: user.id,
-      approved_at: new Date().toISOString(),
+      approved_at: now,
       approval_notes: approvalNotes,
+      paid_at: finalStatus === "paid" ? now : null,
+      paid_by_id: finalStatus === "paid" ? user.id : null,
     })
     .eq("id", expenseId)
     .eq("status", "submitted") as { error: { message: string } | null };
@@ -503,8 +526,8 @@ export async function approveExpense(
   await (supabase as any).from("audit_log").insert({
     entity_type: "expense", entity_id: expenseId,
     action: "update", actor_id: user.id,
-    after_snapshot: { status: "approved" },
-    change_summary: "Expense approved",
+    after_snapshot: { status: finalStatus, payment_type: currentExpense.payment_type },
+    change_summary: finalStatus === "paid" ? "Expense approved; no reimbursement payment required" : "Expense approved",
   });
 
   const emailFailures: string[] = [];
@@ -524,25 +547,28 @@ export async function approveExpense(
           approverName,
           expenseId: isPublicSubmission(expData) ? null : expenseId,
           locale,
+          paymentComplete: finalStatus === "paid",
         }).catch((error) => {
           emailFailures.push(`submitter approval email: ${describeEmailError(error)}`);
         })
       );
     }
 
-    if (treasurerEmails.length) {
-      notificationJobs.push(
-        sendExpenseNeedsPaymentEmail({
-          treasurerEmails, submitterName,
-          description: expData.description, amount: expData.amount,
-          campus: expData.campuses?.name ?? "",
-          approverName, expenseId, locale,
-        }).catch((error) => {
-          emailFailures.push(`payment notification email: ${describeEmailError(error)}`);
-        })
-      );
-    } else {
-      emailFailures.push("payment notification email: no TREASURER_EMAIL or PAYMENT_NOTIFICATION_EMAILS configured");
+    if (!isPaymentCompleteOnApproval(expData.payment_type)) {
+      if (treasurerEmails.length) {
+        notificationJobs.push(
+          sendExpenseNeedsPaymentEmail({
+            treasurerEmails, submitterName,
+            description: expData.description, amount: expData.amount,
+            campus: expData.campuses?.name ?? "",
+            approverName, expenseId, locale,
+          }).catch((error) => {
+            emailFailures.push(`payment notification email: ${describeEmailError(error)}`);
+          })
+        );
+      } else {
+        emailFailures.push("payment notification email: no TREASURER_EMAIL or PAYMENT_NOTIFICATION_EMAILS configured");
+      }
     }
 
     await Promise.all(notificationJobs);
@@ -561,7 +587,6 @@ export async function approveExpense(
   }
   return { success: true };
 }
-
 export async function rejectExpense(
   locale: string,
   expenseId: string,

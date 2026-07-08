@@ -32,6 +32,7 @@
     "title": "Donations",
     "newDonation": "New Donation",
     "giftDate": "Gift Date",
+    "serialNumber": "Serial #",
     "donor": "Donor",
     "amount": "Amount (TWD)",
     "campus": "Campus",
@@ -60,6 +61,7 @@
     "description": "Description",
     "category": "Category",
     "expenseDate": "Expense Date",
+    "serialNumber": "Serial #",
     "amount": "Amount (TWD)",
     "campus": "Campus",
     "fund": "Fund",
@@ -76,7 +78,8 @@
     "paymentType": "How was this expense paid?",
     "paymentTypes": {
       "reimbursement": "Needs reimbursement — I paid out of pocket",
-      "petty_cash": "Paid from petty cash — no reimbursement needed"
+      "petty_cash": "Paid from petty cash — no reimbursement needed",
+      "mobile_transfer": "Transferred from TIF account via mobile"
     },
     "bankInfo": "Bank Transfer Details",
     "savedBankAccount": "Recipient Account",

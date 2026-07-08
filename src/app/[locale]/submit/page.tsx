@@ -15,9 +15,9 @@ type LocaleLabels = {
   title: string; subtitle: string; name: string; email: string;
   campus: string; category: string; description: string; descHint: string;
   amount: string; date: string; notes: string; notesHint: string;
-  paymentType: string; reimbursement: string; pettyCash: string;
+  paymentType: string; reimbursement: string; pettyCash: string; mobileTransfer: string;
   bankCode: string; bankAccountNumber: string; bankHint: string;
-  pettyCashHint: string;
+  pettyCashHint: string; mobileTransferHint: string;
   savedBankDetailsHint: string;
   submit: string; submitting: string; successTitle: string; successMsg: string;
   submitAnother: string; selectCampus: string; selectCategory: string;
@@ -42,10 +42,12 @@ const LABELS: Record<string, LocaleLabels> = {
     paymentType: "Payment Type",
     reimbursement: "Reimbursement",
     pettyCash:   "Paid from petty cash",
+    mobileTransfer: "Transferred from TIF account via mobile",
     bankCode:    "Bank Code",
     bankAccountNumber: "Bank Account Number",
     bankHint:    "Required for reimbursement by bank transfer",
     pettyCashHint: "No bank details needed",
+    mobileTransferHint: "No bank details needed",
     savedBankDetailsHint: "Saved bank details from a previous submission were filled in on this device.",
     submit:      "Submit Request",
     submitting:  "Submitting…",
@@ -94,10 +96,12 @@ const LABELS: Record<string, LocaleLabels> = {
     paymentType: "付款方式",
     reimbursement: "請款匯款",
     pettyCash:   "零用金已支付",
+    mobileTransfer: "已由 TIF 帳戶手機轉帳",
     bankCode:    "銀行代碼",
     bankAccountNumber: "銀行帳號",
     bankHint:    "請款匯款時必填",
     pettyCashHint: "不需要填寫銀行資料",
+    mobileTransferHint: "不需要填寫銀行資料",
     savedBankDetailsHint: "已自動帶入這台裝置上先前提交過的銀行資料。",
     submit:      "提交申請",
     submitting:  "提交中…",
@@ -197,7 +201,7 @@ export default function SubmitExpensePage() {
 
   function set(field: string, value: string) {
     setForm(f => {
-      if (field === "payment_type" && value === "petty_cash") {
+      if (field === "payment_type" && value !== "reimbursement") {
         return { ...f, payment_type: value, bank_code: "", bank_account_number: "" };
       }
       return { ...f, [field]: value };
@@ -411,7 +415,7 @@ export default function SubmitExpensePage() {
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">{t.paymentType} <span className="text-red-500">*</span></label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <label className={`rounded-lg border p-3 cursor-pointer transition ${form.payment_type === "reimbursement" ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-white"}`}>
                   <div className="flex items-start gap-3">
                     <input
@@ -441,6 +445,22 @@ export default function SubmitExpensePage() {
                     <div>
                       <p className="text-sm font-medium text-gray-800">{t.pettyCash}</p>
                       <p className="text-xs text-gray-500 mt-1">{t.pettyCashHint}</p>
+                    </div>
+                  </div>
+                </label>
+                <label className={`rounded-lg border p-3 cursor-pointer transition ${form.payment_type === "mobile_transfer" ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-white"}`}>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="payment_type"
+                      value="mobile_transfer"
+                      checked={form.payment_type === "mobile_transfer"}
+                      onChange={e => set("payment_type", e.target.value)}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{t.mobileTransfer}</p>
+                      <p className="text-xs text-gray-500 mt-1">{t.mobileTransferHint}</p>
                     </div>
                   </div>
                 </label>

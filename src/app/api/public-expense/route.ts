@@ -60,8 +60,8 @@ export async function POST(req: NextRequest) {
   if (!amountNum || amountNum <= 0 || !isFinite(amountNum))
     return NextResponse.json({ error: "Amount must be a positive number" }, { status: 422 });
   if (!expense_date) return NextResponse.json({ error: "Expense date is required" }, { status: 422 });
-  if (!payment_type || !["reimbursement", "petty_cash"].includes(payment_type))
-    return NextResponse.json({ error: "payment_type must be 'reimbursement' or 'petty_cash'" }, { status: 422 });
+  if (!payment_type || !["reimbursement", "petty_cash", "mobile_transfer"].includes(payment_type))
+    return NextResponse.json({ error: "payment_type must be 'reimbursement', 'petty_cash', or 'mobile_transfer'" }, { status: 422 });
   if (payment_type === "reimbursement" && (!bank_code?.trim() || !bank_account_number?.trim()))
     return NextResponse.json({ error: "bank_code and bank_account_number are required for reimbursements" }, { status: 422 });
 

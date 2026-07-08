@@ -78,8 +78,10 @@ Schema changes live in `supabase/migrations/` and should be applied in order:
 - `005_expense_payment_info.sql`
 - `006_donation_contact_email.sql`
 - `007_explicit_data_api_grants.sql`
+- `008_income_funds.sql`
+- `009_serial_numbers_and_mobile_transfer.sql`
 
-The latest migration adds explicit Data API grants needed for current Supabase public-schema behavior.
+The latest migrations add income funds, serial numbers for donations/expenses, and the mobile-transfer expense payment type. Apply `009_serial_numbers_and_mobile_transfer.sql` before deploying app code that selects `serial_number` or writes `mobile_transfer`.
 
 ## Notes
 

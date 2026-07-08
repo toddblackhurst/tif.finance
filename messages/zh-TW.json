@@ -32,6 +32,7 @@
     "title": "奉獻記錄",
     "newDonation": "新增奉獻",
     "giftDate": "奉獻日期",
+    "serialNumber": "編號",
     "donor": "奉獻者",
     "amount": "金額（台幣）",
     "campus": "堂區",
@@ -60,6 +61,7 @@
     "description": "說明",
     "category": "類別",
     "expenseDate": "支出日期",
+    "serialNumber": "編號",
     "amount": "金額（台幣）",
     "campus": "堂區",
     "fund": "用途",
@@ -76,7 +78,8 @@
     "paymentType": "此支出如何支付？",
     "paymentTypes": {
       "reimbursement": "需要補款 — 我自行墊付",
-      "petty_cash": "已從零用金支付 — 無需補款"
+      "petty_cash": "已從零用金支付 — 無需補款",
+      "mobile_transfer": "已由 TIF 帳戶手機轉帳"
     },
     "bankInfo": "銀行轉帳資料",
     "savedBankAccount": "收款帳號",
